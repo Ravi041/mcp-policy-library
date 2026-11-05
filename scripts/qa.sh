@@ -110,6 +110,15 @@ Q
 done
 pass "checked pack completeness, routing and deny code documentation"
 
+# Router and input-validation codes are documented in the decision model.
+for code in $(grep -o -E '"main",[[:space:]]*$|deny_reason\("main", "[a-z_]+"' policies/mcp/main/main.rego | grep -o -E '"[a-z_]+"$' | tr -d '"'); do
+	grep -q "main\.$code" docs/decision-model.md || fail "main.$code is not documented in docs/decision-model.md"
+done
+for code in $(awk '/"main",$/ { getline; print }' policies/mcp/main/main.rego | grep -o -E '"[a-z_]+"' | tr -d '"'); do
+	grep -q "main\.$code" docs/decision-model.md || fail "main.$code is not documented in docs/decision-model.md"
+done
+pass "main deny codes are documented"
+
 # Every CI action is pinned to a full commit SHA.
 if grep -h -E '^\s*(- )?uses:' .github/workflows/*.yml | grep -v -E '@[0-9a-f]{40}( |$)' >&2; then
 	fail "workflow actions must be pinned to a full commit SHA"

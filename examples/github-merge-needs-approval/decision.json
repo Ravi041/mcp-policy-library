@@ -1,0 +1,12 @@
+{
+  "allow": false,
+  "deny": [],
+  "obligations": {
+    "audit_tags": [
+      "github:write",
+      "pack:github"
+    ]
+  },
+  "policy_version": "0.1.0",
+  "require_approval": true
+}

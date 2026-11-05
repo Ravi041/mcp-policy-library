@@ -62,15 +62,7 @@ decide() {
 }
 
 # Build a separate config bundle from the example data, as a deployment would.
-mkdir -p "$work/config/mcp_config"
-data_args=""
-for file in packs/*/data.example.json; do
-	data_args="$data_args --data $file"
-done
-# shellcheck disable=SC2086 # data_args is a list of flags
-opa eval --format=raw $data_args 'data.mcp_config' >"$work/config/mcp_config/data.json"
-printf '{"roots":["mcp_config"]}\n' >"$work/config/.manifest"
-opa build --bundle "$work/config" --output "$work/config.tar.gz"
+sh scripts/build-config-bundle.sh "$work/config.tar.gz" >/dev/null
 
 opa run --server --addr "127.0.0.1:$port" --log-level error \
 	--bundle "$policy_bundle" --bundle "$work/config.tar.gz" >"$work/server.log" 2>&1 &

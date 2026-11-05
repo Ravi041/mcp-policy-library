@@ -1,0 +1,17 @@
+{
+  "allow": false,
+  "deny": [
+    {
+      "code": "postgres.multiple_statements",
+      "message": "only one statement per call is allowed",
+      "pack": "postgres"
+    }
+  ],
+  "obligations": {
+    "audit_tags": [
+      "pack:postgres"
+    ]
+  },
+  "policy_version": "0.1.0",
+  "require_approval": false
+}
