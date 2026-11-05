@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/Ravi041/mcp-policy-library/blob/main/schemas/input.schema.json",
+  "title": "MCP tool call authorization input",
+  "description": "Normalized description of one MCP tools/call request. Version 1.x. Integrations build this document; policies read nothing else from the request.",
+  "type": "object",
+  "required": ["version", "principal", "server", "tool", "arguments"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "description": "Input schema version. Policies accept any 1.x version and deny anything else.",
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "request_id": {
+      "description": "Correlation ID assigned by the integration.",
+      "type": "string"
+    },
+    "timestamp": {
+      "description": "RFC 3339 time the integration received the call. This is the only clock policies read, so decisions stay deterministic and testable. Time-based rules fail closed when it is missing or invalid.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "principal": {
+      "description": "The human or service on whose behalf the call runs. Set by the integration from authenticated identity, never from the agent.",
+      "type": "object",
+      "required": ["id", "type"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "enum": ["user", "service"] },
+        "roles": { "type": "array", "items": { "type": "string" } },
+        "groups": { "type": "array", "items": { "type": "string" } },
+        "tenant": { "type": "string" },
+        "claims": { "type": "object" }
+      }
+    },
+    "agent": {
+      "description": "The calling agent.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      }
+    },
+    "server": {
+      "description": "The MCP server receiving the call. The name is chosen by the integration's configuration, never by the agent.",
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string" },
+        "transport": { "type": "string" },
+        "labels": { "$ref": "#/definitions/labels" }
+      }
+    },
+    "tool": {
+      "description": "The tool being called. Annotations are self-reported by the server and may inform a deny but never grant access on their own.",
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "annotations": { "type": "object" }
+      }
+    },
+    "arguments": {
+      "description": "The tool call arguments exactly as sent by the agent. Treat as untrusted.",
+      "type": "object"
+    },
+    "context": {
+      "description": "Deployment and session context.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "environment": { "type": "string" },
+        "session": { "type": "object" },
+        "labels": { "$ref": "#/definitions/labels" }
+      }
+    }
+  },
+  "definitions": {
+    "labels": {
+      "description": "Free-form string labels. The only place for integration-specific values.",
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  }
+}
