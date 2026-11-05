@@ -1,0 +1,11 @@
+rules:
+  idiomatic:
+    # Template strings need OPA 1.12 or later. This library supports all of OPA 1.x.
+    prefer-string-interpolation:
+      level: ignore
+  imports:
+    # Pack configuration is deployment data, loaded separately from the policy.
+    unresolved-reference:
+      level: error
+      except-paths:
+        - data.mcp_config.**
