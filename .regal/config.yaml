@@ -1,4 +1,5 @@
 rules:
+  bugs: {}
   idiomatic:
     # Avoid template strings so policies stay usable on OPA releases that predate them.
     prefer-string-interpolation:
@@ -6,6 +7,18 @@ rules:
   style:
     # Test tables read better on one line.
     line-length:
+      level: error
+      ignore:
+        files:
+          - "*_test.rego"
+    # Test helpers set up input and data so that each test stays one readable line.
+    external-reference:
+      level: error
+      ignore:
+        files:
+          - "*_test.rego"
+  testing:
+    with-outside-test-context:
       level: error
       ignore:
         files:

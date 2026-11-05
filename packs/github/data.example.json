@@ -1,0 +1,12 @@
+{
+  "mcp_config": {
+    "github": {
+      "allowed_repos": ["acme/web"],
+      "allowed_orgs": [],
+      "protected_branches": ["main", "master", "release/*"],
+      "allow_merge": true,
+      "require_approval_for_writes": false,
+      "require_approval_tools": ["merge_pull_request"]
+    }
+  }
+}

@@ -122,7 +122,8 @@ test_alias_routes_to_pack if {
 test_alias_to_unroutable_pack_is_ignored if {
 	aliased := object.union(base_input, {"server": {"name": "x"}})
 	decision := main.decision with input as aliased
-		with data.mcp.packs.lib as allowing_pack
+		# regal ignore:unresolved-reference
+with 		data.mcp.packs.lib as allowing_pack
 		with data.mcp_config.main.server_aliases as {"x": "lib"}
 	decision.allow == false
 }

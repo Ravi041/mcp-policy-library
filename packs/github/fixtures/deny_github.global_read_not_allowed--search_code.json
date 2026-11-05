@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "request_id": "req-search-code",
+  "timestamp": "2026-11-05T12:00:00Z",
+  "principal": {
+    "id": "alice@example.com",
+    "type": "user",
+    "roles": [
+      "developer"
+    ]
+  },
+  "agent": {
+    "id": "agent-1",
+    "name": "example-agent"
+  },
+  "server": {
+    "name": "github",
+    "transport": "stdio"
+  },
+  "tool": {
+    "name": "search_code"
+  },
+  "arguments": {
+    "query": "repo:evil/secrets token"
+  },
+  "context": {
+    "environment": "production"
+  }
+}

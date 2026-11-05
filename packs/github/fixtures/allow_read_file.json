@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "request_id": "req-allow-read-file",
+  "timestamp": "2026-11-05T12:00:00Z",
+  "principal": {
+    "id": "alice@example.com",
+    "type": "user",
+    "roles": [
+      "developer"
+    ]
+  },
+  "agent": {
+    "id": "agent-1",
+    "name": "example-agent"
+  },
+  "server": {
+    "name": "github",
+    "transport": "stdio"
+  },
+  "tool": {
+    "name": "get_file_contents"
+  },
+  "arguments": {
+    "owner": "acme",
+    "repo": "web",
+    "path": "README.md"
+  },
+  "context": {
+    "environment": "production"
+  }
+}
