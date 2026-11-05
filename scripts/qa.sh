@@ -99,7 +99,7 @@ Q
 	# Principle 5: every deny code is documented in its pack's README.
 	codes="$(awk '/lib\.deny_reason\($/ { getline; getline; print; next }
 		/lib\.deny_reason\(/ { print }
-		/"code": "/ { sub(/.*"code": /, ""); print }' "policies/mcp/packs/$pack/policy.rego" |
+		/"code": "/ { sub(/.*"code": "/, ""); sub(/".*/, ""); print "\"" $0 "\"" }' "policies/mcp/packs/$pack/policy.rego" |
 		grep -o -E '"[a-z_]+"' | tr -d '"' | sort -u)"
 	if [ -z "$codes" ]; then
 		fail "found no deny codes in the $pack pack"

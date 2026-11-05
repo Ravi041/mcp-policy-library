@@ -1,5 +1,4 @@
 rules:
-  bugs: {}
   idiomatic:
     # Avoid template strings so policies stay usable on OPA releases that predate them.
     prefer-string-interpolation:
@@ -17,7 +16,7 @@ rules:
       ignore:
         files:
           - "*_test.rego"
-  testing:
+  performance:
     with-outside-test-context:
       level: error
       ignore:
