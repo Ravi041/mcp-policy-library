@@ -1,0 +1,32 @@
+{
+  "version": "1.0",
+  "request_id": "req-not-allowlisted",
+  "timestamp": "2026-11-05T12:00:00Z",
+  "principal": {
+    "id": "alice@example.com",
+    "type": "user",
+    "roles": [
+      "developer"
+    ]
+  },
+  "agent": {
+    "id": "agent-1",
+    "name": "example-agent"
+  },
+  "server": {
+    "name": "filesystem",
+    "transport": "stdio"
+  },
+  "tool": {
+    "name": "create_directory",
+    "annotations": {
+      "destructiveHint": true
+    }
+  },
+  "arguments": {
+    "path": "/srv/app/tmp/d"
+  },
+  "context": {
+    "environment": "production"
+  }
+}

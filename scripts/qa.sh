@@ -63,6 +63,14 @@ else
 	pass "annotations are read only by baseline"
 fi
 
+# `not f(input.x)` and `not input.x in y` are undefined when the field is missing, not true,
+# so a check written this way silently passes. Assign the value or wrap it in a helper rule.
+if rego_sources | xargs grep -n -E 'not [a-zA-Z_.]+\(.*input\.|not input\.[^ ]+ in ' >&2; then
+	fail "negated check reads input directly and fails open when the field is missing"
+else
+	pass "no negated checks read input directly"
+fi
+
 # Every pack is complete, and is wired into the router and root README.
 routable="$(opa eval --format=raw --data policies/ 'concat(" ", data.mcp.main.routable_packs)')"
 for dir in packs/*/; do

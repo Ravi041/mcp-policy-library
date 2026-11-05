@@ -17,9 +17,10 @@ server_aliases := data.mcp_config.main.server_aliases
 
 routed_pack := server_aliases[input.server.name] if server_aliases[input.server.name] in routable_packs
 
-routed_pack := input.server.name if {
-	not input.server.name in object.keys(server_aliases)
-	input.server.name in routable_packs
+routed_pack := server_name if {
+	server_name := input.server.name
+	not server_name in object.keys(server_aliases)
+	server_name in routable_packs
 }
 
 is_routed if routed_pack
@@ -52,10 +53,11 @@ input_errors contains lib.deny_reason(
 input_errors contains lib.deny_reason(
 	"main",
 	"unsupported_input_version",
-	sprintf("input version %q is not supported; this policy reads version 1.x", [input.version]),
+	"input version is not supported; this policy reads version 1.x",
 ) if {
-	is_string(input.version)
-	not regex.match(`^1\.[0-9]+$`, input.version)
+	version := input.version
+	is_string(version)
+	not regex.match(`^1\.[0-9]+$`, version)
 }
 
 explicit_denies contains reason if some reason in input_errors

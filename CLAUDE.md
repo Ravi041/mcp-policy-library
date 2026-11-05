@@ -71,6 +71,7 @@ Install the pinned tools once with `make tools`. They land in `.bin/`, which the
 ## Writing Rego safely
 
 - A rule that reads a missing field does not fire. Write deny rules as `not <positive check>` so missing and malformed input denies.
+- `not is_string(input.x)` and `not input.x in y` are undefined when the field is missing, not true, so they fail open. Wrap the read in a helper rule (`x_is_string if is_string(input.x)`, then `not x_is_string`) or assign a defaulted value first. `make qa` rejects the direct form.
 - An undefined value inside `sprintf` makes the whole reason undefined, and the deny vanishes. Use a defaulted value such as `tool_name` in messages.
 - Builtin errors evaluate as undefined, so the same rule applies to wrong types.
 - Only a literal `true` opens a config flag; use `lib.flag_enabled`.

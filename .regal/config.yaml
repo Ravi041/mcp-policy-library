@@ -3,6 +3,13 @@ rules:
     # Avoid template strings so policies stay usable on OPA releases that predate them.
     prefer-string-interpolation:
       level: ignore
+  style:
+    # Test tables read better on one line.
+    line-length:
+      level: error
+      ignore:
+        files:
+          - "*_test.rego"
   imports:
     # Pack configuration is deployment data, loaded separately from the policy.
     unresolved-reference:
