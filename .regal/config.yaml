@@ -1,6 +1,6 @@
 rules:
   idiomatic:
-    # Template strings need OPA 1.12 or later. This library supports all of OPA 1.x.
+    # Avoid template strings so policies stay usable on OPA releases that predate them.
     prefer-string-interpolation:
       level: ignore
   imports:
