@@ -32,7 +32,7 @@ curl -s -H 'Content-Type: application/json' \
 The decision is in the `result` field of the response:
 
 ```json
-{"result": {"allow": false, "deny": [{"code": "github.protected_branch", "message": "branch \"main\" is protected; open a pull request instead", "pack": "github"}], "obligations": {"audit_tags": ["github:write", "pack:github"]}, "policy_version": "0.1.0", "require_approval": false}}
+{"result": {"allow": false, "deny": [{"code": "github.protected_branch", "message": "branch \"main\" is protected; open a pull request instead", "pack": "github"}], "obligations": {"audit_tags": ["github:write", "pack:github"]}, "policy_version": "0.1.1", "require_approval": false}}
 ```
 
 ## Use your own configuration
