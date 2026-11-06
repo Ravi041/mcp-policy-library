@@ -173,7 +173,27 @@ unparseable_statements := {
 	"SELECT \"unterminated",
 	"SELECT 1 */",
 	"SELECT 1\u0000; DROP TABLE users",
+	# PostgreSQL accepts any non-ASCII byte in a dollar-quote tag. A quote inside one starts a
+	# string for the scanner but not for PostgreSQL, which hid this DELETE on 17.11.
+	"WITH a AS (SELECT $é$'$é$ AS x), d AS (DELETE FROM orders RETURNING 1) SELECT count(*) FROM d -- '",
+	"SELECT $é$'$é$; DROP TABLE users -- '",
+	"SELECT $日本$'$日本$, pg_read_file('/etc/passwd') -- '",
+	"SELECT $_é$'$_é$, * FROM secrets.keys -- '",
+	"SELECT a$b FROM t",
+	# PostgreSQL treats a vertical tab and a form feed as whitespace, but the scanner's \s
+	# does not match a vertical tab, which hid these calls on 17.11.
+	"SELECT pg_read_file\u000b('/etc/passwd')",
+	"SELECT value FROM secrets\u000b.keys",
+	"SELECT\u000c1",
+	"SELECT 1\u001b",
+	"SELECT 1\u007f",
 }
+
+test_tabs_and_newlines_are_ordinary_whitespace if {
+	allowed(sql_call("SELECT\t1\r\nFROM\tusers\n"))
+}
+
+test_dollar_sign_inside_a_string_is_only_text if allowed(sql_call("SELECT 'costs $5 or $10'"))
 
 test_unparseable_sql_denied if {
 	every sql in unparseable_statements {
@@ -237,6 +257,49 @@ test_denied_schema_blocks_quoted_reference if {
 test_denied_schema_blocks_spaced_reference if not allowed_with(sql_call("SELECT * FROM secrets . keys"), schema_cfg)
 
 test_other_schema_allowed if allowed_with(sql_call("SELECT * FROM public.users"), schema_cfg)
+
+# Schema names that must be quoted, or that contain non-ASCII letters. PostgreSQL 17.11
+# served "my-secrets".tokens while the scanner saw only "secrets" or "crets".
+quoted_schema_cfg := {"denied_schemas": ["my-secrets", "sécrets", "with space"]}
+
+test_denied_schema_with_unusual_characters if {
+	not allowed_with(sql_call(`SELECT * FROM "my-secrets".tokens`), quoted_schema_cfg)
+	not allowed_with(sql_call(`SELECT * FROM "MY-SECRETS" . tokens`), quoted_schema_cfg)
+	not allowed_with(sql_call("SELECT * FROM sécrets.tokens"), quoted_schema_cfg)
+	not allowed_with(sql_call(`SELECT * FROM "sécrets".tokens`), quoted_schema_cfg)
+	not allowed_with(sql_call(`SELECT * FROM "with space".tokens`), quoted_schema_cfg)
+	allowed_with(sql_call(`SELECT * FROM "my-public".tokens`), quoted_schema_cfg)
+}
+
+# Planner statistics hold sample values from every readable table, so they expose denied
+# schemas. PostgreSQL 17.11 returned most_common_vals for a denied schema's table.
+statistics_queries := {
+	"SELECT most_common_vals FROM pg_stats WHERE schemaname = 'secrets'",
+	"SELECT * FROM pg_catalog.pg_stats",
+	`SELECT * FROM "pg_stats"`,
+	"SELECT * FROM PG_STATS_EXT",
+	"SELECT * FROM pg_stats_ext_exprs",
+	"SELECT * FROM pg_statistic",
+	"SELECT * FROM pg_statistic_ext_data",
+}
+
+test_statistics_views_denied_with_denied_schemas if {
+	every sql in statistics_queries {
+		not allowed_with(sql_call(sql), schema_cfg)
+		"postgres.statistics_not_allowed" in codes(postgres.deny) with input as sql_call(sql)
+			with data.mcp_config.postgres as schema_cfg
+	}
+}
+
+test_statistics_views_allowed_without_denied_schemas if {
+	every sql in statistics_queries {
+		allowed_with(sql_call(sql), {})
+	}
+}
+
+test_column_named_like_a_statistics_view_is_still_text if {
+	allowed_with(sql_call("SELECT 'pg_stats' AS name"), schema_cfg)
+}
 
 test_denied_schema_blocks_metadata_tool if {
 	not allowed_with(call("list_objects", {"schema_name": "secrets"}), schema_cfg)

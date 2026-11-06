@@ -243,6 +243,7 @@ test_annotations_never_grant if {
 
 gated_tools := {
 	"merge_pull_request": ["allow_merge", "github.merge_not_allowed"],
+	"update_pull_request_branch": ["allow_update_pr_branch", "github.update_pr_branch_not_allowed"],
 	"actions_run_trigger": ["allow_workflow_runs", "github.workflow_run_not_allowed"],
 	"assign_copilot_to_issue": ["allow_copilot", "github.copilot_not_allowed"],
 	"assign_copilot_to_issue_with_intent": ["allow_copilot", "github.copilot_not_allowed"],
@@ -295,6 +296,18 @@ test_cross_repo_head_from_allowed_org_allowed if {
 	allowed(repo_call("create_pull_request", object.union(pr, {"head": "Trusted-Org:feature"})))
 }
 
+# A pull request from a protected branch lets update_pull_request_branch merge its base
+# into that branch: create_pull_request(head=main, base=evil), then update its branch.
+test_pull_request_from_protected_branch_denied if {
+	every head in ["main", "MAIN", "acme:main", "refs/heads/main", "release/1.0", "Trusted-Org:master"] {
+		denied_with(repo_call("create_pull_request", object.union(pr, {"head": head, "base": "evil"})), "github.protected_branch")
+	}
+}
+
+test_pull_request_from_unprotected_branch_into_protected_allowed if {
+	allowed(repo_call("create_pull_request", object.union(pr, {"head": "acme:feature/main-fix"})))
+}
+
 test_pull_request_without_head_denied if denied_with(repo_call("create_pull_request", {"title": "t", "base": "main"}), "github.missing_argument")
 
 test_pull_request_without_base_denied if denied_with(repo_call("create_pull_request", {"title": "t", "head": "x"}), "github.missing_argument")
@@ -317,6 +330,14 @@ test_agent_approval_denied_in_any_case if {
 
 test_non_string_review_event_denied if {
 	denied_with(repo_call("pull_request_review_write", object.union(review, {"event": 1})), "github.pr_approval_not_allowed")
+}
+
+# Only the events the server lists, other than APPROVE, pass without allow_pr_approval.
+test_review_event_is_an_allowlist if {
+	every event in [" APPROVE", "APPROVE ", "approve\n", "DISMISS", ""] {
+		denied_with(repo_call("pull_request_review_write", object.union(review, {"event": event})), "github.pr_approval_not_allowed")
+	}
+	allowed(repo_call("pull_request_review_write", object.union(review, {"event": "REQUEST_CHANGES"})))
 }
 
 test_agent_approval_opens_with_flag if {

@@ -185,11 +185,18 @@ code_with_identifiers := regex.replace(sql, token_pattern, "${2} ") if sql_is_pr
 # them could hide a statement. Refusing them is what keeps the checks below honest.
 sql_is_unreadable if contains(sql, `\`) # E'' escapes and standard_conforming_strings
 
-sql_is_unreadable if regex.match(`\$[A-Za-z0-9_]*\$`, sql) # dollar quoting
+sql_is_unreadable if regex.match(`\$[A-Za-z0-9_\x{80}-\x{10FFFF}]*\$`, sql) # dollar quoting
+
+# A dollar quote's tag may hold any non-ASCII letter, so refuse every "$" outside strings,
+# comments and quoted identifiers rather than trying to recognize each tag. A tag cannot
+# start with a digit, so a positional parameter such as $1 is still accepted.
+sql_is_unreadable if regex.match(`\$([^0-9]|$)`, code_with_no_tokens)
 
 sql_is_unreadable if regex.match(`(?i)\bu&`, sql) # Unicode escapes
 
-sql_is_unreadable if regex.match(`\x00`, sql)
+# PostgreSQL's whitespace includes vertical tab and form feed, which the patterns here do
+# not all treat as whitespace. Only tab, newline and carriage return are accepted.
+sql_is_unreadable if regex.match(`[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]`, sql)
 
 sql_is_unreadable if contains(code_with_no_tokens, "'") # unterminated string
 
@@ -247,15 +254,35 @@ called_functions contains lower(match[1]) if {
 	some match in regex.find_all_string_submatch_n(`([A-Za-z_][A-Za-z0-9_$]*)\s*\(`, code_with_identifiers, -1)
 }
 
+# PostgreSQL identifiers may contain any non-ASCII letter.
+identifier_pattern := `[A-Za-z_\x{80}-\x{10FFFF}][A-Za-z0-9_$\x{80}-\x{10FFFF}]*`
+
 referenced_schemas contains lower(match[1]) if {
 	sql_is_readable
-	some match in regex.find_all_string_submatch_n(`([A-Za-z_][A-Za-z0-9_$]*)\s*\.`, code_with_identifiers, -1)
+	pattern := sprintf(`(%s)\s*\.`, [identifier_pattern])
+	some match in regex.find_all_string_submatch_n(pattern, code_with_identifiers, -1)
+}
+
+# A quoted schema name can hold characters no unquoted identifier can, such as "-" or a
+# space. Walk the same tokens as above and keep each quoted identifier followed by a dot.
+referenced_schemas contains lower(replace(match[2], `""`, `"`)) if {
+	sql_is_readable
+	some match in regex.find_all_string_submatch_n(`('(?:[^']|'')*'|--[^\r\n]*)|"((?:[^"]|"")*)"(\s*\.)?`, sql, -1)
+	match[3] != ""
 }
 
 referenced_schemas contains lower(schema) if {
 	tool_name in schema_tools
 	schema := input.arguments.schema_name
 	is_string(schema)
+}
+
+# Planner statistics hold sample values from every table the role can read.
+statistics_relations := {"pg_stats", "pg_stats_ext", "pg_stats_ext_exprs", "pg_statistic", "pg_statistic_ext_data"}
+
+referenced_identifiers contains lower(name) if {
+	sql_is_readable
+	some name in regex.find_n(identifier_pattern, code_with_identifiers, -1)
 }
 
 schema_name_is_string if is_string(input.arguments.schema_name)
@@ -395,6 +422,15 @@ deny contains lib.deny_reason(
 	sprintf("schema %q is denied", [name]),
 ) if {
 	some name in (referenced_schemas & denied_schemas)
+}
+
+deny contains lib.deny_reason(
+	pack_name,
+	"statistics_not_allowed",
+	sprintf("%q holds sample values from every table, including denied schemas", [name]),
+) if {
+	count(denied_schemas) > 0
+	some name in (referenced_identifiers & statistics_relations)
 }
 
 default allow := false
