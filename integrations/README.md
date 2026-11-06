@@ -4,6 +4,7 @@ The policies know nothing about any gateway. An integration is the small adapter
 
 | Integration | Status |
 |---|---|
+| [`agentgateway/`](agentgateway/README.md) | The agentgateway MCP gateway, through OPA-Envoy ext_authz. The adapter policy is tested by `make test`; [`try.sh`](agentgateway/try.sh) runs it with real MCP servers. |
 | [`opa-sidecar/`](opa-sidecar/README.md) | OPA over HTTP with Docker Compose. Tested by `make e2e-docker`. |
 | [`kavrynt/`](kavrynt/README.md) | Documentation only, until Kavrynt's loading API is confirmed. |
 

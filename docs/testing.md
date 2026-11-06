@@ -14,7 +14,7 @@ Five layers of tests run locally with `make` and in three GitHub Actions workflo
 
 ## Unit tests
 
-Tests sit next to the code they test, as `*_test.rego` in packages ending in `_test`. Each pack's tests cover allow cases, deny cases and edge cases: missing fields, wrong types, empty arguments, no config and mistyped config. The router's tests mock packs with `with data.mcp.packs.<pack> as {...}`, and check these invariants for every outcome:
+Tests sit next to the code they test, as `*_test.rego` in packages ending in `_test`. `make test` also runs the agentgateway adapter's tests, in `integrations/agentgateway/policy/`, against the library. Each pack's tests cover allow cases, deny cases and edge cases: missing fields, wrong types, empty arguments, no config and mistyped config. The router's tests mock packs with `with data.mcp.packs.<pack> as {...}`, and check these invariants for every outcome:
 
 - A refusal always carries at least one reason.
 - An allowed call never carries reasons.
@@ -67,6 +67,10 @@ The second server has only the policy bundle loaded:
 6. **No config.** Every `allow_*` and `approve_*` fixture is refused, showing that configuration can only open access. The only exceptions are fixtures named `allow_postgres_default_*`, because read-only SQL is the postgres pack's documented default.
 
 `scripts/e2e-docker.sh` starts `integrations/opa-sidecar/docker-compose.yml` from the built bundles and checks one allowed and one denied call. It runs in the `e2e` workflow and needs a running Docker daemon locally.
+
+## Gateway walkthrough
+
+`integrations/agentgateway/try.sh` runs the library behind agentgateway, with real MCP servers, and makes 29 checks. They cover identity, every pack, side effects and failing closed when OPA is down. It downloads a gateway and MCP servers, so it is not part of CI. [Try it with an MCP gateway](try-it-with-gateways.md) is the runbook.
 
 ## Running one thing
 
