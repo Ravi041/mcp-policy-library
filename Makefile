@@ -6,29 +6,32 @@ export PATH := $(BIN):$(PATH)
 VERSION ?= dev
 COVERAGE_THRESHOLD ?= 90
 
+# Rego that the static checks and tests cover: the library, plus integration adapters that need only OPA.
+REGO_DIRS := policies/ integrations/agentgateway/policy/
+
 .PHONY: tools fmt fmt-check check lint test coverage fixtures qa bundle config-bundle e2e e2e-docker ci clean
 
 tools: ## Install pinned OPA and Regal into .bin/
 	sh scripts/install-tools.sh
 
 fmt: ## Rewrite Rego files in canonical format
-	opa fmt --write policies/
+	opa fmt --write $(REGO_DIRS)
 
 fmt-check: ## Fail if any Rego file is not canonically formatted
-	@test -z "$$(opa fmt --list policies/)" || { echo "needs opa fmt:"; opa fmt --list policies/; exit 1; }
-	opa fmt --diff --fail policies/
+	@test -z "$$(opa fmt --list $(REGO_DIRS))" || { echo "needs opa fmt:"; opa fmt --list $(REGO_DIRS); exit 1; }
+	opa fmt --diff --fail $(REGO_DIRS)
 
 check: ## Compile with strict checks
-	opa check --strict policies/
+	opa check --strict $(REGO_DIRS)
 
 lint: ## Run Regal
-	regal lint policies/
+	regal lint $(REGO_DIRS)
 
 test: ## Run Rego unit tests
-	opa test policies/
+	opa test $(REGO_DIRS)
 
 coverage: ## Run unit tests and enforce the coverage threshold
-	opa test --coverage --threshold $(COVERAGE_THRESHOLD) policies/ > coverage.json || { \
+	opa test --coverage --threshold $(COVERAGE_THRESHOLD) $(REGO_DIRS) > coverage.json || { \
 		sh scripts/coverage-report.sh coverage.json; exit 1; }
 	@sh scripts/coverage-report.sh coverage.json
 
