@@ -67,6 +67,8 @@ opa eval --format=pretty \
 
 Swap in `examples/github-pull-request-allowed/input.json` and the same agent may open a pull request into `main`. The other directories under [`examples/`](examples/) show a merge held for human approval, filesystem traversal and a Postgres transaction escape.
 
+To see the policies enforced on real MCP servers behind a real gateway, follow [Try it with an MCP gateway](docs/try-it-with-gateways.md).
+
 To serve decisions over HTTP, as an integration would:
 
 ```sh
@@ -168,6 +170,7 @@ Every key is documented in its pack README.
 
 | Integration | What it is |
 |---|---|
+| [agentgateway](integrations/agentgateway/README.md) | An MCP gateway that asks OPA before forwarding each request. [Try it with real MCP servers](docs/try-it-with-gateways.md) in about ten minutes. |
 | [Generic OPA sidecar](integrations/opa-sidecar/README.md) | OPA over HTTP, with a Docker Compose example pinned by image digest |
 | [Kavrynt](integrations/kavrynt/README.md) | Documentation only, until Kavrynt's loading API is confirmed |
 | [Write your own adapter](integrations/README.md) | How to build the input, query OPA and enforce the decision for any gateway |
@@ -217,7 +220,7 @@ policies/                      Rego only; the bundle root is mcp
 packs/<pack>/                  README, data.example.json, fixtures/
 schemas/                       input and decision contracts (JSON Schema)
 examples/<name>/               input.json and its exact decision.json
-integrations/                  OPA sidecar, Kavrynt notes, adapter guide
+integrations/                  agentgateway adapter, OPA sidecar, Kavrynt notes, adapter guide
 scripts/                       tool install, fixtures, QA, end-to-end tests
 docs/                          input contract, decision model, writing a pack, testing
 ```

@@ -1,0 +1,116 @@
+# agentgateway configuration for the walkthrough. try.sh fills in the @...@ placeholders.
+#
+# One route per MCP server. Each route:
+#   - requires a JWT from the dev issuer (jwtAuth, mode strict); the verified claims are passed
+#     to OPA, and the adapter uses `sub` as principal.id
+#   - asks OPA before forwarding every request (extAuthz over gRPC, with the JSON-RPC body)
+#   - names its server in `context.mcp_server`, which becomes server.name in the policy input,
+#     so the agent can never pick the pack that judges it
+#
+# Verified against agentgateway v1.7.0.
+binds:
+- port: @GATEWAY_PORT@
+  listeners:
+  - routes:
+    - name: filesystem
+      matches:
+      - path:
+          exact: /filesystem/mcp
+      policies:
+        jwtAuth: &jwt
+          mode: strict
+          issuer: mcp-policy-library-dev
+          audiences: [mcp-gateway]
+          jwks:
+            file: @WORK@/keys/jwks.json
+        extAuthz:
+          host: 127.0.0.1:@AUTHZ_PORT@
+          protocol:
+            grpc:
+              context:
+                mcp_server: filesystem
+          includeRequestBody:
+            maxRequestBytes: 1048576
+      backends:
+      - mcp:
+          targets:
+          - name: filesystem
+            stdio:
+              cmd: npx
+              args: ["-y", "@modelcontextprotocol/server-filesystem@2.2.0", "@WORK@/workspace"]
+
+    - name: github
+      matches:
+      - path:
+          exact: /github/mcp
+      policies:
+        jwtAuth: *jwt
+        extAuthz:
+          host: 127.0.0.1:@AUTHZ_PORT@
+          protocol:
+            grpc:
+              context:
+                mcp_server: github
+          includeRequestBody:
+            maxRequestBytes: 1048576
+      backends:
+      - mcp:
+          targets:
+          - name: github
+            stdio:
+              cmd: @BIN@/github-mcp-server
+              args: ["stdio"]
+              env:
+                # A placeholder, not a credential. Calls the policy refuses never reach GitHub;
+                # calls it allows reach GitHub and fail with "Bad credentials".
+                GITHUB_PERSONAL_ACCESS_TOKEN: not-a-real-token
+
+    - name: postgres
+      matches:
+      - path:
+          exact: /postgres/mcp
+      policies:
+        jwtAuth: *jwt
+        extAuthz:
+          host: 127.0.0.1:@AUTHZ_PORT@
+          protocol:
+            grpc:
+              context:
+                mcp_server: postgres
+          includeRequestBody:
+            maxRequestBytes: 1048576
+      backends:
+      - mcp:
+          targets:
+          - name: postgres
+            stdio:
+              cmd: docker
+              # Unrestricted mode turns off the server's own read-only guard, so every refusal
+              # in the walkthrough comes from the policy.
+              args: ["run", "-i", "--rm", "--add-host=host.docker.internal:host-gateway",
+                     "-e", "DATABASE_URI", "@POSTGRES_MCP_IMAGE@", "--access-mode=unrestricted"]
+              env:
+                DATABASE_URI: postgresql://demo:demo@host.docker.internal:@PG_PORT@/demo
+
+    # A server the configuration does not list. Only the baseline pack applies, and it refuses.
+    - name: everything
+      matches:
+      - path:
+          exact: /everything/mcp
+      policies:
+        jwtAuth: *jwt
+        extAuthz:
+          host: 127.0.0.1:@AUTHZ_PORT@
+          protocol:
+            grpc:
+              context:
+                mcp_server: everything
+          includeRequestBody:
+            maxRequestBytes: 1048576
+      backends:
+      - mcp:
+          targets:
+          - name: everything
+            stdio:
+              cmd: npx
+              args: ["-y", "@modelcontextprotocol/server-everything@2.2.1"]

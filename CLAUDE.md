@@ -32,6 +32,7 @@ packs/<pack>/                README.md, data.example.json, fixtures/
 schemas/                     input and decision contracts
 scripts/                     tool install, fixture check, QA, end-to-end tests
 integrations/                adapters and deployment examples, gateway specifics go here
+  agentgateway/policy/       adapter Rego (package mcp_adapters.agentgateway), covered by make test
 examples/<name>/             input.json and decision.json, end to end
 docs/                        input contract, decision model, writing a pack, testing
 ```

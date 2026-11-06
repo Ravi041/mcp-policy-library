@@ -27,4 +27,5 @@ rules:
     unresolved-reference:
       level: error
       except-paths:
+        - data.mcp_config
         - data.mcp_config.**
