@@ -49,6 +49,14 @@ test_read_multiple_files_allowed if {
 	filesystem.allow with input as call("read_multiple_files", args) with data.mcp_config.filesystem as config
 }
 
+test_config_without_write_paths_allows_reads_only if {
+	read_only := {"read_paths": ["/srv/app"]}
+	filesystem.allow with input as call("read_text_file", {"path": "/srv/app/a"}) with data.mcp_config.filesystem as read_only
+	not filesystem.allow with input as call("write_file", {"path": "/srv/app/a"}) with data.mcp_config.filesystem as read_only
+	reasons := filesystem.deny with input as call("write_file", {"path": "/srv/app/a"}) with data.mcp_config.filesystem as read_only
+	"filesystem.path_not_allowed" in codes(reasons)
+}
+
 test_search_files_allowed if {
 	args := {"path": "/srv/app", "pattern": "**/*.go"}
 	filesystem.allow with input as call("search_files", args) with data.mcp_config.filesystem as config
@@ -278,4 +286,17 @@ test_audit_tags if {
 	filesystem.audit_tags == {"filesystem:read"} with input as call("read_text_file", {"path": "/a"})
 	filesystem.audit_tags == {"filesystem:write"} with input as call("write_file", {"path": "/a"})
 	filesystem.audit_tags == {"filesystem:read", "filesystem:write"} with input as call("copy_file", {"source": "/a", "destination": "/b"})
+	filesystem.audit_tags == {"filesystem:read"} with input as call("read_multiple_files", {"paths": ["/a"]})
+	filesystem.audit_tags == {"filesystem:read"} with input as call("list_allowed_directories", {})
+}
+
+test_path_list_given_as_object_denied if {
+	request := call("read_multiple_files", {"paths": {"a": "/srv/app/a"}})
+	not filesystem.allow with input as request with data.mcp_config.filesystem as config
+	reasons := filesystem.deny with input as request with data.mcp_config.filesystem as config
+	"filesystem.missing_argument" in codes(reasons)
+}
+
+test_listing_needs_read_paths_as_a_list if {
+	not filesystem.allow with input as call("list_allowed_directories", {}) with data.mcp_config.filesystem as {"read_paths": "/srv/app"}
 }

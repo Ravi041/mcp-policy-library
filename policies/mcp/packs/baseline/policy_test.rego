@@ -153,3 +153,7 @@ test_hours_ignored_when_unconfigured if {
 	late := object.union(call("s", "t"), {"timestamp": "2026-11-05T20:00:00Z"})
 	count(baseline.deny) == 0 with input as late
 }
+
+test_no_server_list_means_no_server_check if {
+	count(baseline.deny) == 0 with input as call("anything", "tool") with data.mcp_config.baseline as {}
+}

@@ -87,3 +87,12 @@ test_glob_normalizes_before_matching if lib.path_matches_glob("/srv//app/./.env"
 test_glob_no_match if not lib.path_matches_glob("/srv/app/main.go", "**/.env")
 
 test_glob_any_matches_second_entry if lib.path_matches_any_glob("/srv/.env", ["**/x", "**/.env"])
+
+# path_within is the containment check every filesystem rule relies on, so it refuses unsafe
+# paths itself rather than counting on each caller to check them first.
+test_within_refuses_control_characters if not lib.path_within("/srv/app/a\u0000b", "/srv/app")
+
+test_within_refuses_kernel_links if {
+	not lib.path_within("/proc/self/root/srv/app/a", "/proc/self/root/srv/app")
+	not lib.path_within("/dev/fd/3", "/dev")
+}

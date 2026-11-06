@@ -86,6 +86,12 @@ test_issue_parent_in_other_repo_denied if {
 	denied_with(repo_call("issue_write", args), "github.repo_not_allowed")
 }
 
+# Either parent field alone counts as a parent reference, so it must name an allowed repository.
+test_issue_parent_with_only_one_field_denied if {
+	denied_with(repo_call("issue_write", {"method": "create", "title": "t", "parent_repo": "web"}), "github.repo_not_allowed")
+	denied_with(repo_call("issue_write", {"method": "create", "title": "t", "parent_owner": "acme"}), "github.repo_not_allowed")
+}
+
 test_issue_parent_in_listed_repo_allowed if {
 	args := {"method": "create", "title": "t", "parent_issue_number": 1, "parent_owner": "acme", "parent_repo": "web"}
 	allowed(repo_call("issue_write", args))
@@ -382,4 +388,10 @@ test_missing_tool_name_denied if {
 	not github.allow with input as {"arguments": repo_args} with data.mcp_config.github as config
 	codes(github.deny) == {"github.tool_not_supported"} with input as {"arguments": repo_args}
 		with data.mcp_config.github as config
+}
+
+test_repository_path_with_control_characters_denied if {
+	every path in ["src/a\u0000.go", "src/a\n.go", "src/\u007f.go"] {
+		denied_with(repo_call("create_or_update_file", object.union(file_write, {"path": path})), "github.invalid_path")
+	}
 }

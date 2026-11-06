@@ -430,4 +430,17 @@ test_audit_tags if {
 	postgres.audit_tags == {"postgres:write"} with input as sql_call("DELETE FROM t WHERE id = 1")
 	postgres.audit_tags == {"postgres:ddl"} with input as sql_call("DROP TABLE t")
 	postgres.audit_tags == {"postgres:read"} with input as call("list_schemas", {})
+	postgres.audit_tags == {"postgres:read"} with input as call("analyze_db_health", {})
 }
+
+test_writes_need_no_approval_without_the_flag if {
+	request := sql_call("DELETE FROM t WHERE id = 1")
+	postgres.allow with input as request with data.mcp_config.postgres as {"allow_writes": true}
+	not postgres.require_approval with input as request with data.mcp_config.postgres as {"allow_writes": true}
+}
+
+test_quoted_alias_named_like_a_denied_schema_allowed if {
+	allowed_with(sql_call(`SELECT 1 AS "secrets"`), schema_cfg)
+}
+
+test_whitespace_only_sql_is_a_missing_argument if denied_with(sql_call(" \n\t "), "postgres.missing_argument")
