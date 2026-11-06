@@ -98,7 +98,6 @@ repo_write_tools := {
 	"sub_issue_write",
 	"update_issue_comment",
 	"update_pull_request",
-	"update_pull_request_branch",
 }
 
 # Repo-scoped tools that stay off until a config flag turns them on.
@@ -106,6 +105,10 @@ gated_tools := {
 	"merge_pull_request": {
 		"flag": "allow_merge", "code": "merge_not_allowed", "write": true,
 		"reason": "merges are off because the arguments do not reveal the target branch",
+	},
+	"update_pull_request_branch": {
+		"flag": "allow_update_pr_branch", "code": "update_pr_branch_not_allowed", "write": true,
+		"reason": "updating a pull request branch is off because the arguments do not reveal the head branch it writes to",
 	},
 	"actions_run_trigger": {
 		"flag": "allow_workflow_runs", "code": "workflow_run_not_allowed", "write": true,
@@ -214,6 +217,16 @@ branch_is_protected(name) if {
 	glob.match(lower(pattern), ["/"], normalized_branch(name))
 }
 
+# A pull request from a protected branch would let update_pull_request_branch, or a merge
+# in the other direction, write to that branch.
+pull_request_head_branch := branch_part if {
+	tool_name == "create_pull_request"
+	head := input.arguments.head
+	is_string(head)
+	parts := split(head, ":")
+	branch_part := parts[count(parts) - 1]
+}
+
 repo_paths contains path if {
 	tool_name in single_path_tools
 	path := input.arguments.path
@@ -252,6 +265,9 @@ repo_path_is_protected(path) if {
 
 review_method_is_allowed if input.arguments.method in review_methods
 
+# The server's other events. Anything else, including APPROVE with stray whitespace, needs the flag.
+review_events_without_approval := {"COMMENT", "REQUEST_CHANGES"}
+
 review_event_is_present if "event" in object.keys(input.arguments)
 
 review_event_is_allowed if not review_event_is_present
@@ -261,7 +277,7 @@ review_event_is_allowed if lib.flag_enabled(config, "allow_pr_approval")
 review_event_is_allowed if {
 	event := input.arguments.event
 	is_string(event)
-	upper(event) != "APPROVE"
+	upper(event) in review_events_without_approval
 }
 
 deny contains lib.deny_reason(
@@ -342,6 +358,17 @@ deny contains lib.deny_reason(
 	tool_name in branch_tools
 	branch_is_valid(branch)
 	branch_is_protected(branch)
+}
+
+deny contains lib.deny_reason(
+	pack_name,
+	"protected_branch",
+	sprintf(
+		"pull request head %q is a protected branch; open pull requests from a working branch",
+		[pull_request_head_branch],
+	),
+) if {
+	branch_is_protected(pull_request_head_branch)
 }
 
 deny contains lib.deny_reason(
