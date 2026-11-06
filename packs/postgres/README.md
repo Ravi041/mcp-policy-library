@@ -16,7 +16,7 @@ Connect the server with a database role that has only the privileges you intend.
 ## How a statement is judged
 
 1. **Scan.** Strings, comments and quoted identifiers are recognized left to right, so `'--'` is a string and not a comment.
-2. **Refuse what cannot be read.** Backslashes, dollar quoting, `U&` escapes, block comments, NUL bytes and unterminated quotes are denied. PostgreSQL reads these differently than a simple scanner, so each could hide a statement. For example, in `SELECT E'\'' ; DROP TABLE users; --'`, the `DROP` runs in PostgreSQL but looks like part of a string to a naive scanner.
+2. **Refuse what cannot be read.** Backslashes, dollar quoting (any `$` outside a string, except a positional parameter such as `$1`), `U&` escapes, block comments, control characters other than tab, newline and carriage return, and unterminated quotes are denied. PostgreSQL reads these differently than a simple scanner, so each could hide a statement. For example, in `SELECT E'\'' ; DROP TABLE users; --'`, the `DROP` runs in PostgreSQL but looks like part of a string to a naive scanner.
 3. **Refuse multiple statements.** A trailing semicolon is fine. This also stops `COMMIT; DROP TABLE users`, which from reading the archived server's source looks able to escape its read-only transaction, since it passes the SQL straight to the driver. That escape has not been run against a live server here.
 4. **Classify.** The statement's first keyword and the keywords in it decide its class.
 
@@ -57,6 +57,7 @@ Any other tool is denied. That includes `analyze_query_indexes`, because it take
 | `postgres.explain_analyze` | `EXPLAIN ANALYZE` appears, or `explain_query` sets `analyze`, because both run the statement |
 | `postgres.blocked_function` | the SQL calls a blocked function |
 | `postgres.denied_schema` | the SQL or `schema_name` references a denied schema |
+| `postgres.statistics_not_allowed` | `denied_schemas` is set and the SQL reads a planner statistics view or table: `pg_stats`, `pg_stats_ext`, `pg_stats_ext_exprs`, `pg_statistic` or `pg_statistic_ext_data`. These hold sample values from every table the role can read. |
 
 ## Blocked functions
 
@@ -85,5 +86,5 @@ Config lives under `data.mcp_config.postgres`. With no config, read statements a
 ## Limitations
 
 - **Function bodies are invisible.** A user-defined function can do anything its owner can.
-- **`denied_schemas` is a text match on qualified names.** An unqualified name found through `search_path` is not caught, and a table alias equal to a denied schema name is refused. Functions that take a table or query as a string, such as `table_to_xml('secrets.tokens', ...)`, can read any table the role can; the built-in ones are blocked, but an extension can add more. Revoke access to sensitive schemas in the database as well.
+- **`denied_schemas` is a text match on qualified names.** An unqualified name found through `search_path` is not caught, and a table alias equal to a denied schema name is refused. Functions that take a table or query as a string, such as `table_to_xml('secrets.tokens', ...)`, can read any table the role can; the built-in ones are blocked, but an extension can add more. Catalog views such as `information_schema.columns` still show the names and types of a denied schema's columns, though not its rows. Revoke access to sensitive schemas in the database as well.
 - **Resources are not covered.** The archived server exposes table schemas as MCP resources, and this pack authorizes tool calls only.
