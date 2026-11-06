@@ -1,0 +1,18 @@
+{
+  "allow": false,
+  "deny": [
+    {
+      "code": "filesystem.path_traversal",
+      "message": "path \"/srv/app/../../etc/passwd\" contains a traversal sequence",
+      "pack": "filesystem"
+    }
+  ],
+  "obligations": {
+    "audit_tags": [
+      "filesystem:read",
+      "pack:filesystem"
+    ]
+  },
+  "policy_version": "0.1.0",
+  "require_approval": false
+}

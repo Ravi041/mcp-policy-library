@@ -1,0 +1,13 @@
+{
+  "mcp_config": {
+    "postgres": {
+      "allow_writes": false,
+      "allow_ddl": false,
+      "allow_unbounded_writes": false,
+      "require_approval_for_writes": false,
+      "denied_schemas": ["secrets"],
+      "extra_blocked_functions": [],
+      "allowed_optional_tools": []
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "request_id": "req-allow-open-pull-request-into-main",
+  "timestamp": "2026-11-05T12:00:00Z",
+  "principal": {
+    "id": "alice@example.com",
+    "type": "user",
+    "roles": [
+      "developer"
+    ]
+  },
+  "agent": {
+    "id": "agent-1",
+    "name": "example-agent"
+  },
+  "server": {
+    "name": "github",
+    "transport": "stdio"
+  },
+  "tool": {
+    "name": "create_pull_request"
+  },
+  "arguments": {
+    "owner": "acme",
+    "repo": "web",
+    "title": "Add feature",
+    "head": "feature/x",
+    "base": "main"
+  },
+  "context": {
+    "environment": "production"
+  }
+}

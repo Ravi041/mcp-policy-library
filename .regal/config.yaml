@@ -1,0 +1,30 @@
+rules:
+  idiomatic:
+    # Avoid template strings so policies stay usable on OPA releases that predate them.
+    prefer-string-interpolation:
+      level: ignore
+  style:
+    # Test tables read better on one line.
+    line-length:
+      level: error
+      ignore:
+        files:
+          - "*_test.rego"
+    # Test helpers set up input and data so that each test stays one readable line.
+    external-reference:
+      level: error
+      ignore:
+        files:
+          - "*_test.rego"
+  performance:
+    with-outside-test-context:
+      level: error
+      ignore:
+        files:
+          - "*_test.rego"
+  imports:
+    # Pack configuration is deployment data, loaded separately from the policy.
+    unresolved-reference:
+      level: error
+      except-paths:
+        - data.mcp_config.**

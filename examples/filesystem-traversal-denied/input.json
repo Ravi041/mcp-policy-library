@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "request_id": "req-dot-dot",
+  "timestamp": "2026-11-05T12:00:00Z",
+  "principal": {
+    "id": "alice@example.com",
+    "type": "user",
+    "roles": [
+      "developer"
+    ]
+  },
+  "agent": {
+    "id": "agent-1",
+    "name": "example-agent"
+  },
+  "server": {
+    "name": "filesystem",
+    "transport": "stdio"
+  },
+  "tool": {
+    "name": "read_text_file"
+  },
+  "arguments": {
+    "path": "/srv/app/../../etc/passwd"
+  },
+  "context": {
+    "environment": "production"
+  }
+}

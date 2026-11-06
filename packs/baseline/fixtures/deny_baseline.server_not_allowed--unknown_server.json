@@ -1,0 +1,27 @@
+{
+  "version": "1.0",
+  "request_id": "req-unknown-server",
+  "timestamp": "2026-11-05T12:00:00Z",
+  "principal": {
+    "id": "alice@example.com",
+    "type": "user",
+    "roles": [
+      "developer"
+    ]
+  },
+  "agent": {
+    "id": "agent-1",
+    "name": "example-agent"
+  },
+  "server": {
+    "name": "shadow-server",
+    "transport": "stdio"
+  },
+  "tool": {
+    "name": "search"
+  },
+  "arguments": {},
+  "context": {
+    "environment": "production"
+  }
+}

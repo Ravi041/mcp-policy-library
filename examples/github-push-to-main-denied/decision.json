@@ -1,0 +1,18 @@
+{
+  "allow": false,
+  "deny": [
+    {
+      "code": "github.protected_branch",
+      "message": "branch \"main\" is protected; open a pull request instead",
+      "pack": "github"
+    }
+  ],
+  "obligations": {
+    "audit_tags": [
+      "github:write",
+      "pack:github"
+    ]
+  },
+  "policy_version": "0.1.0",
+  "require_approval": false
+}

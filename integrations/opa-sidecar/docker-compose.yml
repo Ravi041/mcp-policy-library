@@ -1,0 +1,20 @@
+# OPA as a sidecar serving data.mcp.main.decision on 127.0.0.1:8181.
+# Build the bundles first, from the repository root: make bundle config-bundle
+services:
+  opa:
+    image: openpolicyagent/opa:1.22.1-static@sha256:e9e6cf5d569ff419cfa5785ab28d46709a5e69cb5856d53e1b6cb8d343a39730
+    command:
+      - run
+      - --server
+      - --addr=0.0.0.0:8181
+      - --log-level=info
+      - --bundle
+      - /bundles/mcp-policy-library.tar.gz
+      - --bundle
+      - /bundles/config.tar.gz
+    ports:
+      - "127.0.0.1:8181:8181"
+    volumes:
+      - ../../dist:/bundles:ro
+    read_only: true
+    restart: unless-stopped

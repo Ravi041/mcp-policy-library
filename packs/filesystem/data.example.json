@@ -1,0 +1,10 @@
+{
+  "mcp_config": {
+    "filesystem": {
+      "read_paths": ["/srv/app"],
+      "write_paths": ["/srv/app/tmp"],
+      "deny_globs": ["**/.env", "**/.env.*", "**/.ssh/**", "**/*.pem"],
+      "require_approval_for_writes": false
+    }
+  }
+}

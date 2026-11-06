@@ -1,0 +1,18 @@
+{
+  "mcp_config": {
+    "main": {
+      "server_aliases": {
+        "gh-prod": "github"
+      }
+    },
+    "baseline": {
+      "allowed_servers": ["filesystem", "github", "gh-prod", "postgres", "wiki"],
+      "destructive_allowlist": {
+        "filesystem": ["write_file", "edit_file", "move_file"]
+      },
+      "allowed_tools": {
+        "wiki": ["search"]
+      }
+    }
+  }
+}

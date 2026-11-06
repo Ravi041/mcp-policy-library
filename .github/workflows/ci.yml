@@ -1,0 +1,56 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: format, compile, lint, unit tests, fixtures, bundle
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: make tools
+      - run: make fmt-check
+      - run: make check
+      - run: make lint
+      - run: make coverage
+      - run: make fixtures
+      - run: make bundle VERSION="${GITHUB_SHA}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: opa-bundle
+          path: dist/mcp-policy-library.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: attach bundle to the GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: make tools
+      - run: make qa
+      - run: make bundle VERSION="${RELEASE_TAG}"
+      - name: Create or update the release
+        run: |
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release upload "${RELEASE_TAG}" dist/mcp-policy-library.tar.gz --clobber
+          else
+            gh release create "${RELEASE_TAG}" dist/mcp-policy-library.tar.gz --generate-notes --verify-tag
+          fi

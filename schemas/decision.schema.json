@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/Ravi041/mcp-policy-library/blob/main/schemas/decision.schema.json",
+  "title": "MCP tool call authorization decision",
+  "description": "Result of data.mcp.main.decision. Run the call only when allow is true. When require_approval is true, hold the call for a human; allow stays false so an integration that ignores the flag fails closed.",
+  "type": "object",
+  "required": ["allow", "deny", "require_approval", "policy_version"],
+  "additionalProperties": false,
+  "properties": {
+    "allow": {
+      "description": "True only if a rule allowed the call, nothing denied it and no approval is pending.",
+      "type": "boolean"
+    },
+    "deny": {
+      "description": "Every reason the call was refused. Empty when allowed or when approval is pending.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "message", "pack"],
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "description": "Stable machine-readable code: <pack>.<reason>.",
+            "type": "string",
+            "pattern": "^[a-z_]+\\.[a-z_]+$"
+          },
+          "message": {
+            "description": "Human-readable explanation. May change between releases; do not match on it.",
+            "type": "string",
+            "minLength": 1
+          },
+          "pack": {
+            "description": "The pack that produced this reason.",
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "require_approval": {
+      "description": "True when the call may run only after a human approves it. Never true alongside a non-empty deny list.",
+      "type": "boolean"
+    },
+    "obligations": {
+      "description": "Actions the integration should take with the decision.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "audit_tags": {
+          "description": "Tags to attach to the audit record for this call.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "policy_version": {
+      "description": "Version of this library that produced the decision.",
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

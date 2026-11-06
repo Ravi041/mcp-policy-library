@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "request_id": "req-agent-approves",
+  "timestamp": "2026-11-05T12:00:00Z",
+  "principal": {
+    "id": "alice@example.com",
+    "type": "user",
+    "roles": [
+      "developer"
+    ]
+  },
+  "agent": {
+    "id": "agent-1",
+    "name": "example-agent"
+  },
+  "server": {
+    "name": "github",
+    "transport": "stdio"
+  },
+  "tool": {
+    "name": "pull_request_review_write"
+  },
+  "arguments": {
+    "owner": "acme",
+    "repo": "web",
+    "pullNumber": 12,
+    "method": "create",
+    "event": "APPROVE"
+  },
+  "context": {
+    "environment": "production"
+  }
+}
