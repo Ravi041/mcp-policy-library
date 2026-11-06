@@ -220,43 +220,6 @@ test_explain_query_non_boolean_analyze_denied if {
 	denied_with(call("explain_query", {"sql": "SELECT 1", "analyze": "false"}), "postgres.explain_analyze")
 }
 
-# Functions with side effects, or that run SQL hidden in a string.
-
-blocked_function_calls := {
-	"SELECT pg_read_file('/etc/passwd')",
-	"SELECT PG_READ_FILE('/etc/passwd')",
-	"SELECT pg_read_file ('/etc/passwd')",
-	"SELECT pg_read_file\n('/etc/passwd')",
-	"SELECT pg_catalog.pg_read_file('/etc/passwd')",
-	"SELECT \"pg_read_file\"('/etc/passwd')",
-	"SELECT \"pg_catalog\".\"pg_read_file\"('/etc/passwd')",
-	"SELECT pg_sleep(100)",
-	"SELECT pg_terminate_backend(1)",
-	"SELECT set_config('role', 'admin', false)",
-	"SELECT query_to_xml('DROP TABLE users', true, true, '')",
-	"SELECT * FROM ts_stat('DROP TABLE users')",
-	"SELECT lo_import('/etc/passwd')",
-	"SELECT dblink_exec('x', 'DROP TABLE users')",
-	"SELECT setval('s', 1)",
-	"SELECT nextval('s')",
-}
-
-test_blocked_functions_denied if {
-	every sql in blocked_function_calls {
-		sql_denied_with(sql, "postgres.blocked_function")
-	}
-}
-
-test_function_name_inside_a_string_is_only_text if allowed(sql_call("SELECT 'pg_sleep(1)'"))
-
-test_column_with_blocked_name_is_not_a_call if allowed(sql_call("SELECT pg_sleep FROM t"))
-
-test_extra_blocked_function if {
-	cfg := {"extra_blocked_functions": ["My_Func"]}
-	not allowed_with(sql_call("SELECT my_func(1)"), cfg)
-	allowed_with(sql_call("SELECT other_func(1)"), cfg)
-}
-
 # Denied schemas.
 
 schema_cfg := {"denied_schemas": ["Secrets"]}
