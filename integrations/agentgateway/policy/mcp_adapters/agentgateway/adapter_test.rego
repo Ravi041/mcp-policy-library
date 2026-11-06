@@ -204,3 +204,26 @@ test_truncated_initialize_is_refused if {
 	request := json.patch(rpc("initialize"), [{"op": "replace", "path": "/truncated_body", "value": true}])
 	refusal_code(request) == "adapter.body_too_large"
 }
+
+test_message_without_method_or_id_refused if {
+	request := check("POST", {"jsonrpc": "2.0", "result": {}}, {"mcp_server": "filesystem"}, alice)
+	not response_for(request).allowed
+}
+
+test_verified_user_wins_over_route_service_principal if {
+	request := check("POST", {"jsonrpc": "2.0", "id": 1, "method": "ping"}, {"mcp_server": "filesystem", "mcp_principal": "svc-bot"}, alice)
+	principal := agentgateway.principal with input as request
+	principal.id == "alice@example.com"
+	principal.type == "user"
+}
+
+test_truncated_body_refused_whatever_it_claims_to_be if {
+	every body in [
+		{"jsonrpc": "2.0", "method": "notifications/initialized"},
+		{"jsonrpc": "2.0", "id": 3, "result": {}},
+		{"jsonrpc": "2.0", "id": 4, "method": "ping"},
+	] {
+		request := object.union(check("POST", body, {"mcp_server": "filesystem"}, alice), {"truncated_body": true})
+		refusal_code(request) == "adapter.body_too_large"
+	}
+}
