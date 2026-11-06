@@ -100,6 +100,9 @@ up() {
 
 	[ -f "$WORK/keys/jwks.json" ] || sh "$here/dev-token.sh" keys "$WORK/keys"
 	sh "$here/dev-token.sh" token "$WORK/keys" alice@example.com >"$WORK/token"
+	# A well-formed token with the same kid, signed by a key the gateway does not trust.
+	[ -f "$WORK/untrusted-keys/dev-key.pem" ] || sh "$here/dev-token.sh" keys "$WORK/untrusted-keys"
+	sh "$here/dev-token.sh" token "$WORK/untrusted-keys" alice@example.com >"$WORK/forged-token"
 
 	echo 'hello from the allowed project' >"$WORK/workspace/projects/app/README.md"
 	echo 'API_KEY=not-a-real-secret' >"$WORK/workspace/projects/app/.env"
@@ -285,7 +288,7 @@ check() {
 
 	echo "Identity, enforced by the gateway before OPA is asked"
 	verify "no token is rejected with HTTP 401" sh -c "MCP_SESSION_FILE='$WORK/sessions/anon' sh '$here/mcp-client.sh' '$gateway/filesystem/mcp' tools/list | grep -q '^HTTP 401'"
-	verify "a token from another key is rejected with HTTP 401" sh -c "MCP_TOKEN='$(cat "$WORK/token" | sed 's/.$/A/')' MCP_SESSION_FILE='$WORK/sessions/anon' sh '$here/mcp-client.sh' '$gateway/filesystem/mcp' tools/list | grep -q '^HTTP 401'"
+	verify "a token from another key is rejected with HTTP 401" sh -c "MCP_TOKEN='$(cat "$WORK/forged-token")' MCP_SESSION_FILE='$WORK/sessions/anon' sh '$here/mcp-client.sh' '$gateway/filesystem/mcp' tools/list | grep -q '^HTTP 401'"
 
 	echo "filesystem pack"
 	open_session filesystem
