@@ -92,3 +92,13 @@ If OPA is down or times out, agentgateway refuses the request with HTTP 403 and 
 - **One server per route.** If several targets are multiplexed on one route, agentgateway prefixes tool names with the target name, and `mcp_server` can name only one pack. Give each server its own route, as the template does.
 - **Sensitive decision logs.** `try.sh` turns on console decision logs, which include tool arguments such as file contents and SQL. In production, mask them with a decision-log mask policy or send them to a protected sink.
 - **No approval step.** Approval becomes a refusal.
+
+## Deploying it safely
+
+These were checked in a penetration test against agentgateway v1.7.0 and OPA-Envoy v1.22.0.
+
+- **Keep agents off the gateway's host.** agentgateway's admin endpoint, `localhost:15000` by default, serves the whole configuration, including backend credentials such as `GITHUB_PERSONAL_ACCESS_TOKEN` and database passwords. An agent with a shell on the same host or in the same network namespace can read them and call the backends directly, without passing the policy. It can be moved with `config.adminAddr` but not turned off. The template binds the stats and readiness ports to localhost as well.
+- **Keep agents away from OPA's HTTP API.** OPA refuses writes under a bundle's roots, so a local process could not change `mcp`, `mcp_config` or `mcp_adapters/agentgateway`. It could still read every configuration value and load unrelated policies. Bind the API to localhost, as `try.sh` does, and add [authentication](https://www.openpolicyagent.org/docs/security) where other processes share the host.
+- **Give each MCP server only the directories the policy allows.** The filesystem server resolves symlinks against its own allowed directories, and the policy cannot see links. In the template, both use `workspace/projects`.
+- **What the test found the adapter refuses.** Requests with no JSON content type, batches, methods in another case and `tools/call` sent as a notification are refused. agentgateway itself rejected bodies that were gzip-compressed, started with a byte-order mark, were larger than `maxRequestBytes`, or repeated `method` or a key inside `params`.
+- **Porting to another gateway.** Check that it parses JSON the way OPA does. OPA keeps the last of two duplicate keys. A gateway or server that keeps the first would forward a different call from the one the policy judged.

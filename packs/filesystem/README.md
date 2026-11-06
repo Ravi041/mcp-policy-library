@@ -52,7 +52,7 @@ The server marks `write_file`, `edit_file` and `move_file` as destructive, so th
 
 ## Limitations
 
-- **Symlinks and hard links are invisible.** Rego sees a string and cannot look at the disk. `/srv/app/link` is allowed by `/srv/app` even if that link points to `/etc`. The server resolves symlinks against its own allowed directories, so start it with the same directories, and do not treat this pack as a replacement for that check. The server's README notes that hard links can reach content outside its allowed directories as well.
+- **Symlinks and hard links are invisible.** Rego sees a string and cannot look at the disk. `/srv/app/link` is allowed by `/srv/app` even if that link points to `/etc`, and `/srv/app/notes.txt` is allowed even if it points to a `.env` file that `deny_globs` would refuse. Both were shown through a live gateway. The server resolves symlinks against its own allowed directories, so start it with the same directories, and do not treat this pack as a replacement for that check. Keep secrets outside those directories altogether: `deny_globs` matches names, so it cannot protect a file that a link points to. The server's README notes that hard links can reach content outside its allowed directories as well.
 - **POSIX paths only.** Backslashes are refused, so Windows paths are denied.
 - **Listings reveal names.** `deny_globs` are checked against the paths in the arguments. Listing or searching an allowed parent directory can still show the name of a denied file, though not its content.
 - **Start the server read-only if you can.** `--read-only` removes write tools at the server, which is stronger than any policy here.

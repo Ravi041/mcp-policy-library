@@ -8,6 +8,13 @@
 #     so the agent can never pick the pack that judges it
 #
 # Verified against agentgateway v1.7.0.
+#
+# The admin endpoint (localhost:15000 by default) serves the full configuration, including
+# backend credentials such as GITHUB_PERSONAL_ACCESS_TOKEN. Keep agents in a different
+# container or host from the gateway, so they cannot read it and call the backends directly.
+config:
+  statsAddr: 127.0.0.1:15020
+  readinessAddr: 127.0.0.1:15021
 binds:
 - port: @GATEWAY_PORT@
   listeners:
@@ -37,7 +44,8 @@ binds:
           - name: filesystem
             stdio:
               cmd: npx
-              args: ["-y", "@modelcontextprotocol/server-filesystem@2.2.0", "@WORK@/workspace"]
+              # The same directory as read_paths, so a symlink cannot lead the server outside it.
+              args: ["-y", "@modelcontextprotocol/server-filesystem@2.2.0", "@WORK@/workspace/projects"]
 
     - name: github
       matches:
