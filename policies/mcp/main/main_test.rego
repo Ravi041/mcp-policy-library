@@ -246,3 +246,30 @@ approval_with_deny(decision) if {
 	decision.require_approval == true
 	count(decision.deny) > 0
 }
+
+# Router configuration types. A malformed alias table refuses every call.
+
+test_aliases_that_are_not_an_object_of_strings_deny if {
+	every aliases in [["github"], {"gh-prod": ["github"]}, "github"] {
+		decision := main.decision with input as base_input
+			with data.mcp.packs.github as allowing_pack
+			with data.mcp_config.main.server_aliases as aliases
+		decision.allow == false
+		"main.invalid_config" in codes(decision)
+	}
+}
+
+test_main_config_that_is_not_an_object_denies if {
+	decision := main.decision with input as base_input
+		with data.mcp.packs.github as allowing_pack
+		with data.mcp_config.main as "github"
+	decision.allow == false
+	"main.invalid_config" in codes(decision)
+}
+
+test_valid_aliases_have_no_config_problem if {
+	decision := main.decision with input as base_input
+		with data.mcp.packs.github as allowing_pack
+		with data.mcp_config.main.server_aliases as {"gh-prod": "github"}
+	not "main.invalid_config" in codes(decision)
+}

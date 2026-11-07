@@ -12,6 +12,7 @@ Verified against: not applicable. This pack names no server tools; it reads only
 | `baseline.destructive_tool` | `tool.annotations.destructiveHint` is present and not `false`, and the tool is not allowlisted for that server |
 | `baseline.invalid_timestamp` | `business_hours` is configured and `timestamp` is missing or invalid |
 | `baseline.outside_business_hours` | `business_hours` is configured and the call falls outside it, or the window itself is invalid |
+| `baseline.invalid_config` | a key in `data.mcp_config.baseline` has the wrong type, such as a string where a list belongs, or that config is not an object. Every call to any server is refused until it is fixed, because a malformed deny list would otherwise switch its check off. |
 
 The `allow` rule is used only when a server has no pack. For a server with a pack, listing a tool under `allowed_tools` has no effect.
 

@@ -11,9 +11,16 @@ policy_version := "0.1.1"
 # Packs a server may route to. Baseline runs on every call and is never a route.
 routable_packs := {"filesystem", "github", "postgres"}
 
+default router_config := {}
+
+router_config := data.mcp_config.main
+
 default server_aliases := {}
 
-server_aliases := data.mcp_config.main.server_aliases
+server_aliases := router_config.server_aliases
+
+# A malformed router config refuses every call.
+config_problems := lib.config_problems(router_config, {"server_aliases": "string_map"})
 
 routed_pack := server_aliases[input.server.name] if server_aliases[input.server.name] in routable_packs
 
@@ -61,6 +68,14 @@ input_errors contains lib.deny_reason(
 }
 
 explicit_denies contains reason if some reason in input_errors
+
+explicit_denies contains lib.deny_reason(
+	"main",
+	"invalid_config",
+	sprintf("the router configuration is invalid: %s", [concat("; ", sort(config_problems))]),
+) if {
+	count(config_problems) > 0
+}
 
 explicit_denies contains reason if some reason in baseline.deny
 

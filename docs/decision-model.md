@@ -42,6 +42,7 @@ An integration that does not understand `require_approval` will look only at `al
 |---|---|
 | `main.invalid_input` | A required field is missing or has the wrong type: `version`, `principal.id`, `server.name`, `tool.name` or `arguments` |
 | `main.unsupported_input_version` | `version` is not `1.x` |
+| `main.invalid_config` | `data.mcp_config.main` is not an object, or `server_aliases` is not an object whose values are strings. Every call is refused until it is fixed. |
 | `main.no_allow_rule` | Nothing denied the call, but no rule allowed it either. This is default deny. |
 
 Each pack documents its own codes in `packs/<pack>/README.md`.
