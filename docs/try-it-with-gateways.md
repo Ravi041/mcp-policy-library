@@ -51,10 +51,13 @@ Use the released bundle:
 
 ```sh
 mkdir -p dist
-gh release download v0.1.0 --repo Ravi041/mcp-policy-library -p mcp-policy-library.tar.gz -D dist
+gh release download v0.1.1 --repo Ravi041/mcp-policy-library -p mcp-policy-library.tar.gz -D dist
 shasum -a 256 dist/mcp-policy-library.tar.gz
-# 930f8945185b23b73914bdb3b1b0e7badc78e91a351d75b20932abf4caf6a399
+# cdfae94f8fd792e8a32af2afa0b4999ca554e6a1b5d551dcc9d0326b774ba563
+gh attestation verify dist/mcp-policy-library.tar.gz --repo Ravi041/mcp-policy-library
 ```
+
+Do not use v0.1.0. It has authorization bypasses that 0.1.1 fixes; see the [changelog](../CHANGELOG.md).
 
 Or build one from your checkout with `make bundle`. Either way it lands at `dist/mcp-policy-library.tar.gz`, where the walkthrough looks for it. Set `BUNDLE=/path/to/bundle.tar.gz` to use another file.
 
@@ -170,7 +173,7 @@ The agent receives:
         "allow": false,
         "deny": [{"code": "github.protected_branch", "message": "branch \"main\" is protected; open a pull request instead", "pack": "github"}],
         "obligations": {"audit_tags": ["github:write", "pack:github"]},
-        "policy_version": "0.1.0",
+        "policy_version": "0.1.1",
         "require_approval": false
       }
     }
@@ -227,11 +230,11 @@ sh integrations/agentgateway/try.sh down
 
 ## 6. What was verified
 
-Run on 2026-11-06 on macOS, Apple silicon, with:
+Run on 2026-11-06 on macOS, Apple silicon, with the v0.1.0 release bundle, and again on 2026-11-07 with the v0.1.1 release bundle. The second run repeated every `try.sh` scenario and the curl example in section 5. The MCP Inspector, configuration and latency results below are from the first run.
 
 | Component | Version |
 |---|---|
-| mcp-policy-library | v0.1.0 release bundle, sha256 `930f8945...` |
+| mcp-policy-library | v0.1.1 release bundle, sha256 `cdfae94f...`; v0.1.0, sha256 `930f8945...`, for the first run |
 | agentgateway | v1.7.0 |
 | OPA-Envoy | v1.22.0-envoy |
 | `@modelcontextprotocol/server-filesystem` | 2.2.0 |
