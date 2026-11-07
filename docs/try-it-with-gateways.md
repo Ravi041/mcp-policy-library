@@ -67,7 +67,7 @@ sh integrations/agentgateway/try.sh
 `try.sh` takes these steps:
 
 1. Creates a scratch directory, `.try/agentgateway/`, which git ignores. It holds a sample workspace, a dev signing key, a token for `alice@example.com` and a configuration bundle.
-2. Starts Postgres in Docker with a small `orders` table and a `secrets` schema.
+2. Starts Postgres in Docker with a small `orders` table and two denied schemas, `secrets` and `hr-data`.
 3. Starts OPA-Envoy with three bundles: the policy library, the agentgateway adapter and the configuration.
 4. Starts agentgateway with one route per MCP server.
 5. Makes real MCP calls through the gateway and checks every answer. Where a call would change something, it also checks the file or table.
@@ -107,14 +107,21 @@ postgres pack
   PASS  escape a read-only transaction                             refused:adapter.denied,postgres.multiple_statements
   PASS  read a file through a function                             refused:adapter.denied,postgres.blocked_function
   PASS  read a denied schema                                       refused:adapter.denied,postgres.denied_schema
+  PASS  read a denied schema behind a comment                      refused:adapter.denied,postgres.denied_schema
+  PASS  read a table named in a string                             refused:adapter.denied,postgres.blocked_function
+  PASS  run SQL through dblink                                     refused:adapter.denied,postgres.blocked_function,postgres.blocked_function
+  PASS  schedule SQL with pg_cron                                  refused:adapter.denied,postgres.blocked_function
   PASS  EXPLAIN ANALYZE, which runs the statement                  refused:adapter.denied,postgres.explain_analyze,postgres.write_not_allowed
+  PASS  EXPLAIN with a quoted analyze option                       refused:adapter.denied,postgres.explain_analyze
   PASS    ...and every order is still there
 Failure handling
   PASS  OPA is down: the call is refused, not forwarded            http:403
   PASS    ...and nothing was written
 
-29 passed, 0 failed, 0 skipped
+34 passed, 0 failed, 0 skipped
 ```
+
+`try.sh` keeps an existing `$WORK/config/data.json`, so you can edit it. If you ran an older version, delete that file first, or the `hr-data` check fails against the old configuration.
 
 The script exits non-zero if any check fails.
 
@@ -236,7 +243,7 @@ Run on 2026-11-06 on macOS, Apple silicon, with:
 
 Results:
 
-- **Scenarios.** All 29 `try.sh` checks passed. With OPA stopped, the same run reports every check that expects a policy answer as `FAIL`, so the harness does detect failures.
+- **Scenarios.** All 34 `try.sh` checks passed. With OPA stopped, the same run reports every check that expects a policy answer as `FAIL`, so the harness does detect failures. Run against a bundle built before the 0.1.1 security review, the four checks for the issues it fixed fail and the other 30 pass.
 - **Refusals block.** Refused writes left no file behind, and the refused `DELETE` and `EXPLAIN ANALYZE` left all three rows in place.
 - **Allowed calls really run.** The allowed filesystem write created its file. The allowed SELECT returned the seeded rows. The allowed GitHub read reached `api.github.com` and came back "401 Bad credentials".
 - **Identity.** A missing token or a token signed by another key gets HTTP 401 from the gateway, before OPA is asked.
