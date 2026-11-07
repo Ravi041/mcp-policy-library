@@ -34,6 +34,7 @@ Any other tool is denied. Write access does not imply read access, so a director
 | `filesystem.invalid_path` | a path has control characters, or reaches a kernel link such as `/proc/self/root` or `/dev/fd` |
 | `filesystem.path_not_allowed` | a safe path is outside the configured read or write paths |
 | `filesystem.path_denied` | a path matches `deny_globs` |
+| `filesystem.invalid_config` | a key in `data.mcp_config.filesystem` has the wrong type, such as a string where a list belongs, or that config is not an object. Every call to this pack is refused until it is fixed, because a malformed deny list would otherwise switch its check off. |
 
 ## Configuration
 

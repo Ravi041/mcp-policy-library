@@ -444,3 +444,56 @@ test_quoted_alias_named_like_a_denied_schema_allowed if {
 }
 
 test_whitespace_only_sql_is_a_missing_argument if denied_with(sql_call(" \n\t "), "postgres.missing_argument")
+
+# A comment between a quoted schema name and its dot is whitespace to PostgreSQL. PostgreSQL
+# 17.11 served "hr-data".salaries written this way while the pack allowed it.
+test_denied_schema_with_comment_before_the_dot if {
+	not allowed_with(sql_call("SELECT * FROM \"my-secrets\" -- x\n.tokens"), quoted_schema_cfg)
+	not allowed_with(sql_call("SELECT * FROM \"my-secrets\"--\n  .tokens"), quoted_schema_cfg)
+	not allowed_with(sql_call("SELECT * FROM \"with space\" -- a 'quote\n. tokens"), quoted_schema_cfg)
+	not allowed_with(sql_call("SELECT * FROM \"sécrets\" -- x\r\n.tokens"), quoted_schema_cfg)
+}
+
+test_quoted_name_with_comment_but_no_dot_allowed if {
+	allowed_with(sql_call("SELECT \"my-secrets\" -- x\nFROM t"), quoted_schema_cfg)
+}
+
+# PostgreSQL accepts the option name as a quoted identifier, and EXPLAIN ("analyze") runs the
+# statement on PostgreSQL 17.11.
+test_explain_with_quoted_analyze_option_denied if {
+	sql_denied_with(`EXPLAIN ("analyze") SELECT 1`, "postgres.explain_analyze")
+	sql_denied_with(`EXPLAIN ("analyze" true, FORMAT JSON) SELECT 1`, "postgres.explain_analyze")
+}
+
+# Configuration types. A deny list given as a string used to switch its check off.
+
+test_denied_schemas_as_a_string_denies if {
+	cfg := {"denied_schemas": "secrets"}
+	request := sql_call("SELECT * FROM secrets.tokens")
+	not allowed_with(request, cfg)
+	"postgres.invalid_config" in codes(postgres.deny) with input as request with data.mcp_config.postgres as cfg
+}
+
+# Every documented key, each with a value of the wrong type.
+wrongly_typed_config := {
+	"allow_writes": "false",
+	"allow_ddl": "false",
+	"allow_unbounded_writes": "false",
+	"require_approval_for_writes": "true",
+	"denied_schemas": "secrets",
+	"extra_blocked_functions": "my_func",
+	"allowed_optional_tools": "get_top_queries",
+}
+
+test_every_config_key_is_type_checked if {
+	every key, value in wrongly_typed_config {
+		cfg := {key: value}
+		not allowed_with(sql_call("SELECT 1"), cfg)
+		"postgres.invalid_config" in codes(postgres.deny) with input as sql_call("SELECT 1")
+			with data.mcp_config.postgres as cfg
+	}
+}
+
+test_metadata_tool_denied_with_invalid_config if {
+	not allowed_with(call("list_schemas", {}), {"denied_schemas": "secrets"})
+}

@@ -11,6 +11,23 @@ default config := {}
 
 config := data.mcp_config.github
 
+# The kind of value each documented key must hold.
+config_kinds := {
+	"allowed_repos": "string_list",
+	"allowed_orgs": "string_list",
+	"protected_branches": "string_list",
+	"protected_paths": "string_list",
+	"require_approval_tools": "string_list",
+	"allow_merge": "boolean",
+	"allow_update_pr_branch": "boolean",
+	"allow_workflow_runs": "boolean",
+	"allow_copilot": "boolean",
+	"allow_secret_alerts": "boolean",
+	"allow_global_read": "boolean",
+	"allow_pr_approval": "boolean",
+	"require_approval_for_writes": "boolean",
+}
+
 default protected_branches := ["main", "master"]
 
 protected_branches := config.protected_branches
@@ -50,118 +67,6 @@ parent_repo := input.arguments.parent_repo
 default branch := null
 
 branch := input.arguments.branch
-
-# Read tools that take a required owner and repo. Secret scanning is gated below.
-repo_read_tools := {
-	"actions_get",
-	"actions_list",
-	"get_code_quality_finding",
-	"get_code_scanning_alert",
-	"get_commit",
-	"get_dependabot_alert",
-	"get_discussion",
-	"get_discussion_comments",
-	"get_file_contents",
-	"get_job_logs",
-	"get_label",
-	"get_latest_release",
-	"get_release_by_tag",
-	"get_repository_tree",
-	"get_tag",
-	"issue_read",
-	"list_branches",
-	"list_code_scanning_alerts",
-	"list_commits",
-	"list_dependabot_alerts",
-	"list_issues",
-	"list_label",
-	"list_pull_requests",
-	"list_releases",
-	"list_repository_collaborators",
-	"list_repository_security_advisories",
-	"list_tags",
-	"pull_request_read",
-}
-
-repo_write_tools := {
-	"add_comment_to_pending_review",
-	"add_issue_comment",
-	"add_reply_to_pull_request_comment",
-	"create_branch",
-	"create_or_update_file",
-	"create_pull_request",
-	"delete_file",
-	"issue_write",
-	"label_write",
-	"pull_request_review_write",
-	"push_files",
-	"sub_issue_write",
-	"update_issue_comment",
-	"update_pull_request",
-}
-
-# Repo-scoped tools that stay off until a config flag turns them on.
-gated_tools := {
-	"merge_pull_request": {
-		"flag": "allow_merge", "code": "merge_not_allowed", "write": true,
-		"reason": "merges are off because the arguments do not reveal the target branch",
-	},
-	"update_pull_request_branch": {
-		"flag": "allow_update_pr_branch", "code": "update_pr_branch_not_allowed", "write": true,
-		"reason": "updating a pull request branch is off because the arguments do not reveal the head branch it writes to",
-	},
-	"actions_run_trigger": {
-		"flag": "allow_workflow_runs", "code": "workflow_run_not_allowed", "write": true,
-		"reason": "triggering workflows is off because they run code with repository secrets",
-	},
-	"assign_copilot_to_issue": {
-		"flag": "allow_copilot", "code": "copilot_not_allowed", "write": true,
-		"reason": "delegating work to Copilot is off",
-	},
-	"assign_copilot_to_issue_with_intent": {
-		"flag": "allow_copilot", "code": "copilot_not_allowed", "write": true,
-		"reason": "delegating work to Copilot is off",
-	},
-	"create_pull_request_with_copilot": {
-		"flag": "allow_copilot", "code": "copilot_not_allowed", "write": true,
-		"reason": "delegating work to Copilot is off",
-	},
-	"request_copilot_review": {
-		"flag": "allow_copilot", "code": "copilot_not_allowed", "write": true,
-		"reason": "delegating work to Copilot is off",
-	},
-	"get_secret_scanning_alert": {
-		"flag": "allow_secret_alerts", "code": "secret_alerts_not_allowed", "write": false,
-		"reason": "secret scanning alerts are off because they can reveal secrets",
-	},
-	"list_secret_scanning_alerts": {
-		"flag": "allow_secret_alerts", "code": "secret_alerts_not_allowed", "write": false,
-		"reason": "secret scanning alerts are off because they can reveal secrets",
-	},
-}
-
-# These are not scoped to one repository, so the allowlist cannot constrain them.
-global_read_tools := {
-	"get_me",
-	"search_code",
-	"search_commits",
-	"search_issues",
-	"search_orgs",
-	"search_pull_requests",
-	"search_repositories",
-	"search_users",
-}
-
-admin_tools := {
-	"create_repository",
-	"create_repository_ruleset",
-	"custom_properties_write",
-	"fork_repository",
-}
-
-branch_tools := {"create_branch", "create_or_update_file", "delete_file", "push_files"}
-
-single_path_tools := {"create_or_update_file", "delete_file"}
 
 review_methods := {"create", "submit_pending", "delete_pending"}
 
@@ -278,6 +183,18 @@ review_event_is_allowed if {
 	event := input.arguments.event
 	is_string(event)
 	upper(event) in review_events_without_approval
+}
+
+# A config value of the wrong type refuses every call to this pack, instead of quietly
+# switching a check off.
+config_problems := lib.config_problems(config, config_kinds)
+
+deny contains lib.deny_reason(
+	pack_name,
+	"invalid_config",
+	sprintf("the %s configuration is invalid: %s", [pack_name, concat("; ", sort(config_problems))]),
+) if {
+	count(config_problems) > 0
 }
 
 deny contains lib.deny_reason(

@@ -11,6 +11,17 @@ default config := {}
 
 config := data.mcp_config.postgres
 
+# The kind of value each documented key must hold.
+config_kinds := {
+	"allow_writes": "boolean",
+	"allow_ddl": "boolean",
+	"allow_unbounded_writes": "boolean",
+	"require_approval_for_writes": "boolean",
+	"denied_schemas": "string_list",
+	"extra_blocked_functions": "string_list",
+	"allowed_optional_tools": "string_list",
+}
+
 default tool_name := "<missing>"
 
 tool_name := input.tool.name
@@ -51,107 +62,6 @@ write_keywords := {"INSERT", "UPDATE", "DELETE", "MERGE"}
 
 ddl_keywords := {"ALTER", "CREATE", "DROP", "GRANT", "REVOKE", "TRUNCATE"}
 
-# Functions with side effects, that reach the host, or that run SQL hidden in a string.
-default_blocked_functions := {
-	"brin_desummarize_range",
-	"brin_summarize_new_values",
-	"brin_summarize_range",
-	"cursor_to_xml",
-	"cursor_to_xmlschema",
-	"database_to_xml",
-	"database_to_xml_and_xmlschema",
-	"database_to_xmlschema",
-	"dblink",
-	"dblink_connect",
-	"dblink_exec",
-	"gin_clean_pending_list",
-	"lo_creat",
-	"lo_create",
-	"lo_export",
-	"lo_from_bytea",
-	"lo_import",
-	"lo_put",
-	"lo_truncate",
-	"lo_truncate64",
-	"lo_unlink",
-	"lowrite",
-	"nextval",
-	"pg_advisory_lock",
-	"pg_advisory_lock_shared",
-	"pg_advisory_xact_lock",
-	"pg_advisory_xact_lock_shared",
-	"pg_backup_start",
-	"pg_backup_stop",
-	"pg_cancel_backend",
-	"pg_copy_logical_replication_slot",
-	"pg_copy_physical_replication_slot",
-	"pg_create_logical_replication_slot",
-	"pg_create_physical_replication_slot",
-	"pg_create_restore_point",
-	"pg_drop_replication_slot",
-	"pg_import_system_collations",
-	"pg_log_backend_memory_contexts",
-	"pg_log_standby_snapshot",
-	"pg_logical_emit_message",
-	"pg_logical_slot_get_binary_changes",
-	"pg_logical_slot_get_changes",
-	"pg_logical_slot_peek_binary_changes",
-	"pg_logical_slot_peek_changes",
-	"pg_ls_archive_statusdir",
-	"pg_ls_dir",
-	"pg_ls_logdir",
-	"pg_ls_tmpdir",
-	"pg_ls_waldir",
-	"pg_notify",
-	"pg_promote",
-	"pg_read_binary_file",
-	"pg_read_file",
-	"pg_reload_conf",
-	"pg_replication_origin_advance",
-	"pg_replication_origin_create",
-	"pg_replication_origin_drop",
-	"pg_replication_origin_session_reset",
-	"pg_replication_origin_session_setup",
-	"pg_replication_origin_xact_reset",
-	"pg_replication_origin_xact_setup",
-	"pg_replication_slot_advance",
-	"pg_rotate_logfile",
-	"pg_sleep",
-	"pg_sleep_for",
-	"pg_sleep_until",
-	"pg_stat_file",
-	"pg_stat_reset",
-	"pg_stat_reset_replication_slot",
-	"pg_stat_reset_shared",
-	"pg_stat_reset_single_function_counters",
-	"pg_stat_reset_single_table_counters",
-	"pg_stat_reset_slru",
-	"pg_stat_reset_subscription_stats",
-	"pg_stat_statements_reset",
-	"pg_switch_wal",
-	"pg_sync_replication_slots",
-	"pg_terminate_backend",
-	"pg_try_advisory_lock",
-	"pg_try_advisory_lock_shared",
-	"pg_try_advisory_xact_lock",
-	"pg_try_advisory_xact_lock_shared",
-	"pg_wal_replay_pause",
-	"pg_wal_replay_resume",
-	"query_to_xml",
-	"query_to_xml_and_xmlschema",
-	"query_to_xmlschema",
-	"schema_to_xml",
-	"schema_to_xml_and_xmlschema",
-	"schema_to_xmlschema",
-	"set_config",
-	"setval",
-	"table_to_xml",
-	"table_to_xml_and_xmlschema",
-	"table_to_xmlschema",
-	"ts_rewrite",
-	"ts_stat",
-}
-
 default extra_blocked_functions := []
 
 extra_blocked_functions := config.extra_blocked_functions
@@ -180,6 +90,11 @@ code_with_no_tokens := regex.replace(sql, token_pattern, " ") if sql_is_present
 
 # Strings and comments removed, with identifiers unquoted. Used for function and schema names.
 code_with_identifiers := regex.replace(sql, token_pattern, "${2} ") if sql_is_present
+
+# Strings and comments replaced by spaces, with quoted identifiers kept in their quotes.
+string_or_comment_or_quoted_identifier := `('(?:[^']|'')*'|--[^\r\n]*)|("(?:[^"]|"")*")`
+
+code_with_quoted_identifiers := regex.replace(sql, string_or_comment_or_quoted_identifier, "${2} ") if sql_is_present
 
 # Each of these parses differently in PostgreSQL than in the scanner above, so any of
 # them could hide a statement. Refusing them is what keeps the checks below honest.
@@ -264,11 +179,12 @@ referenced_schemas contains lower(match[1]) if {
 }
 
 # A quoted schema name can hold characters no unquoted identifier can, such as "-" or a
-# space. Walk the same tokens as above and keep each quoted identifier followed by a dot.
-referenced_schemas contains lower(replace(match[2], `""`, `"`)) if {
+# space. Walk the quoted identifiers left to right and keep each one followed by a dot. Comments
+# are gone by now, because PostgreSQL treats one between the name and its dot as whitespace.
+referenced_schemas contains lower(replace(match[1], `""`, `"`)) if {
 	sql_is_readable
-	some match in regex.find_all_string_submatch_n(`('(?:[^']|'')*'|--[^\r\n]*)|"((?:[^"]|"")*)"(\s*\.)?`, sql, -1)
-	match[3] != ""
+	some match in regex.find_all_string_submatch_n(`"((?:[^"]|"")*)"(\s*\.)?`, code_with_quoted_identifiers, -1)
+	match[2] != ""
 }
 
 referenced_schemas contains lower(schema) if {
@@ -299,6 +215,18 @@ class_is_permitted if {
 class_is_permitted if {
 	statement_class == "ddl"
 	lib.flag_enabled(config, "allow_ddl")
+}
+
+# A config value of the wrong type refuses every call to this pack, instead of quietly
+# switching a check off.
+config_problems := lib.config_problems(config, config_kinds)
+
+deny contains lib.deny_reason(
+	pack_name,
+	"invalid_config",
+	sprintf("the %s configuration is invalid: %s", [pack_name, concat("; ", sort(config_problems))]),
+) if {
+	count(config_problems) > 0
 }
 
 deny contains lib.deny_reason(
@@ -397,6 +325,17 @@ deny contains lib.deny_reason(
 ) if {
 	first_keyword == "EXPLAIN"
 	count(keywords & {"ANALYZE", "ANALYSE"}) > 0
+}
+
+# PostgreSQL also takes an option name as a quoted identifier: EXPLAIN ("analyze") runs the
+# statement too. A column of that name is refused as well, which fails closed.
+deny contains lib.deny_reason(
+	pack_name,
+	"explain_analyze",
+	"EXPLAIN ANALYZE runs the statement, so it is not allowed",
+) if {
+	first_keyword == "EXPLAIN"
+	count(referenced_identifiers & {"analyze", "analyse"}) > 0
 }
 
 deny contains lib.deny_reason(

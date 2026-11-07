@@ -11,6 +11,14 @@ default config := {}
 
 config := data.mcp_config.filesystem
 
+# The kind of value each documented key must hold.
+config_kinds := {
+	"read_paths": "string_list",
+	"write_paths": "string_list",
+	"deny_globs": "string_list",
+	"require_approval_for_writes": "boolean",
+}
+
 default read_paths := []
 
 read_paths := config.read_paths
@@ -100,6 +108,18 @@ has_missing_argument if {
 path_is_malformed(path) if lib.path_has_invalid_chars(path)
 
 path_is_malformed(path) if lib.path_has_indirection(path)
+
+# A config value of the wrong type refuses every call to this pack, instead of quietly
+# switching a check off.
+config_problems := lib.config_problems(config, config_kinds)
+
+deny contains lib.deny_reason(
+	pack_name,
+	"invalid_config",
+	sprintf("the %s configuration is invalid: %s", [pack_name, concat("; ", sort(config_problems))]),
+) if {
+	count(config_problems) > 0
+}
 
 deny contains lib.deny_reason(
 	pack_name,
@@ -201,6 +221,7 @@ allow if {
 	tool_name in listing_tools
 	is_array(read_paths)
 	count(read_paths) > 0
+	count(deny) == 0
 }
 
 default require_approval := false

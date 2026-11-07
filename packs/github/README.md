@@ -46,6 +46,7 @@ Everything else, including gists, projects, notifications and stars, is denied a
 | `github.cross_repo_head` | a pull request `head` of the form `owner:branch` names an owner that is neither this repository's owner nor an allowed organization |
 | `github.review_method_not_allowed` | `pull_request_review_write` uses a method other than `create`, `submit_pending` or `delete_pending` |
 | `github.pr_approval_not_allowed` | a review's `event` is present and is not `COMMENT` or `REQUEST_CHANGES`, and `allow_pr_approval` is off |
+| `github.invalid_config` | a key in `data.mcp_config.github` has the wrong type, such as a string where a list belongs, or that config is not an object. Every call to this pack is refused until it is fixed, because a malformed deny list would otherwise switch its check off. |
 
 ## Configuration
 

@@ -130,7 +130,7 @@ up() {
       "require_approval_tools": ["merge_pull_request"]
     },
     "postgres": {
-      "denied_schemas": ["secrets"]
+      "denied_schemas": ["secrets", "hr-data"]
     }
   }
 }
@@ -150,6 +150,9 @@ INSERT INTO public.orders VALUES (1, 'ada', 10.50), (2, 'grace', 22.00), (3, 'li
 CREATE SCHEMA secrets;
 CREATE TABLE secrets.api_keys (name text, value text);
 INSERT INTO secrets.api_keys VALUES ('payments', 'not-a-real-key');
+CREATE SCHEMA "hr-data";
+CREATE TABLE "hr-data".salaries (name text, amount numeric);
+INSERT INTO "hr-data".salaries VALUES ('ada', 1);
 EOF
 		docker rm -f "$PG_CONTAINER" >/dev/null 2>&1 || true
 		docker run -d --name "$PG_CONTAINER" -p "127.0.0.1:$PG_PORT:5432" \
@@ -349,8 +352,18 @@ check() {
 			"{\"name\":\"execute_sql\",\"arguments\":{\"sql\":\"SELECT pg_read_file('/etc/passwd')\"}}"
 		expect "read a denied schema" refused:postgres.denied_schema postgres tools/call \
 			'{"name":"execute_sql","arguments":{"sql":"SELECT * FROM secrets.api_keys"}}'
+		expect "read a denied schema behind a comment" refused:postgres.denied_schema postgres tools/call \
+			'{"name":"execute_sql","arguments":{"sql":"SELECT * FROM \"hr-data\" -- x\n.salaries"}}'
+		expect "read a table named in a string" refused:postgres.blocked_function postgres tools/call \
+			"{\"name\":\"execute_sql\",\"arguments\":{\"sql\":\"SELECT table_to_xml('secrets.api_keys', true, false, '')\"}}"
+		expect "run SQL through dblink" refused:postgres.blocked_function postgres tools/call \
+			"{\"name\":\"execute_sql\",\"arguments\":{\"sql\":\"SELECT dblink_connect_u('c', 'dbname=demo'), dblink_send_query('c', 'DELETE FROM public.orders')\"}}"
+		expect "schedule SQL with pg_cron" refused:postgres.blocked_function postgres tools/call \
+			"{\"name\":\"execute_sql\",\"arguments\":{\"sql\":\"SELECT cron.schedule('* * * * *', 'DELETE FROM public.orders')\"}}"
 		expect "EXPLAIN ANALYZE, which runs the statement" refused:postgres.explain_analyze postgres tools/call \
 			'{"name":"execute_sql","arguments":{"sql":"EXPLAIN ANALYZE DELETE FROM public.orders"}}'
+		expect "EXPLAIN with a quoted analyze option" refused:postgres.explain_analyze postgres tools/call \
+			'{"name":"execute_sql","arguments":{"sql":"EXPLAIN (\"analyze\") SELECT 1"}}'
 		verify "  ...and every order is still there" order_count_is_3
 	else
 		skip "postgres pack (needs Docker)"

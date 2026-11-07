@@ -300,3 +300,39 @@ test_path_list_given_as_object_denied if {
 test_listing_needs_read_paths_as_a_list if {
 	not filesystem.allow with input as call("list_allowed_directories", {}) with data.mcp_config.filesystem as {"read_paths": "/srv/app"}
 }
+
+# Configuration types. A deny list given as a string used to switch its check off.
+
+test_deny_globs_as_a_string_denies if {
+	cfg := object.union(config, {"deny_globs": "**/.env"})
+	request := call("read_text_file", {"path": "/srv/app/.env"})
+	not filesystem.allow with input as request with data.mcp_config.filesystem as cfg
+	"filesystem.invalid_config" in codes(filesystem.deny) with input as request with data.mcp_config.filesystem as cfg
+}
+
+# Every documented key, each with a value of the wrong type.
+wrongly_typed_config := {
+	"read_paths": "/srv/app",
+	"write_paths": "/srv/app/tmp",
+	"deny_globs": "**/.env",
+	"require_approval_for_writes": "true",
+}
+
+test_every_config_key_is_type_checked if {
+	request := call("read_text_file", {"path": "/srv/app/a"})
+	every key, value in wrongly_typed_config {
+		cfg := object.union(config, {key: value})
+		not filesystem.allow with input as request with data.mcp_config.filesystem as cfg
+		"filesystem.invalid_config" in codes(filesystem.deny) with input as request with data.mcp_config.filesystem as cfg
+	}
+}
+
+test_listing_tool_denied_with_invalid_config if {
+	cfg := object.union(config, {"deny_globs": "**/.env"})
+	not filesystem.allow with input as call("list_allowed_directories", {}) with data.mcp_config.filesystem as cfg
+}
+
+test_valid_config_has_no_config_problem if {
+	not "filesystem.invalid_config" in codes(filesystem.deny) with input as call("read_text_file", {"path": "/srv/app/a"})
+		with data.mcp_config.filesystem as config
+}

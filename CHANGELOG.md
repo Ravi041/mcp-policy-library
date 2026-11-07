@@ -6,8 +6,12 @@ Each release's `policy_version` matches its tag. Every decision carries it, so y
 
 ### Security
 
-Found in a penetration test of v0.1.0. Upgrade before relying on the Postgres or GitHub packs.
+Found in a penetration test of v0.1.0 and a security review of the fixes that followed. Upgrade before relying on the Postgres or GitHub packs.
 
+- **postgres (high):** Functions that run SQL given as a string, or that change the server, were missing from the blocked list, so a statement the pack classed as a read could write. On PostgreSQL 17, `SELECT dblink_connect_u(...), dblink_send_query('c', 'DELETE FROM accounts')` deleted every row, `cron.schedule('* * * * *', 'DROP TABLE users')` dropped the table a minute later, and `dblink_build_sql_insert('secrets.tokens', ...)` returned a row from a denied schema. The pack now blocks 40 more functions, 137 in all: every `dblink` function, pg_cron's scheduling functions, adminpack's file functions, `pg_start_backup` and `pg_stop_backup` from PostgreSQL 14, the statistics writers from PostgreSQL 18, and four more `pg_ls_*` directory listings.
+- **postgres (medium):** A `--` comment between a quoted schema name and its dot, as in `"hr-data" -- x` and then `.salaries` on the next line, hid the reference from `denied_schemas`. PostgreSQL treats the comment as whitespace and returned the rows. Quoted names are now matched after comments are removed.
+- **all packs (medium):** A config value of the wrong type switched deny lists off without any error. With `"protected_branches": "main"` instead of `["main"]`, a push to `main` was allowed; the same held for `protected_paths`, `denied_schemas` and `deny_globs`, and `"require_approval_for_writes": "true"` let writes through without approval. Every documented key is now type-checked, and a pack with a malformed config refuses every call with `<pack>.invalid_config`. The router does the same for `server_aliases`, with `main.invalid_config`.
+- **postgres (low):** `EXPLAIN ("analyze")`, with the option name quoted, runs the statement but was not refused as `postgres.explain_analyze`. Writes inside it were already refused.
 - **postgres (critical):** A dollar-quote tag with a non-ASCII letter, such as `$é$`, hid any SQL from the pack: writes, extra statements, blocked functions and denied schemas. Through agentgateway and `postgres-mcp`, it deleted every row of a table. The pack now refuses any `$` outside strings, comments and quoted identifiers, except positional parameters such as `$1`.
 - **postgres (high):** A vertical tab between a name and `(` or `.` hid blocked function calls and denied schema references, because PostgreSQL treats it as whitespace and the pack did not. The pack now refuses control characters other than tab, newline and carriage return.
 - **github (high):** An agent could merge any branch into a protected branch: open a pull request with `head: main` and `base` set to its own branch, then call `update_pull_request_branch`. Pull requests from protected branches are now refused, and `update_pull_request_branch` is off unless `allow_update_pr_branch` is set.
@@ -26,6 +30,7 @@ Found in a penetration test of v0.1.0. Upgrade before relying on the Postgres or
 
 ### Fixed
 
+- `make test` and the other targets failed with GNU Make 3.81, the macOS default, because it did not find `opa` and `regal` in `.bin/`.
 - The agentgateway walkthrough's forged-token check failed about one run in four, because it edited a base64url character that carries no signature data.
 
 ## 0.1.0

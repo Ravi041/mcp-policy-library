@@ -11,6 +11,14 @@ default config := {}
 
 config := data.mcp_config.baseline
 
+# The kind of value each documented key must hold.
+config_kinds := {
+	"allowed_servers": "string_list",
+	"allowed_tools": "string_list_map",
+	"destructive_allowlist": "string_list_map",
+	"business_hours": "object",
+}
+
 default server_name := "<missing>"
 
 server_name := input.server.name
@@ -25,9 +33,24 @@ timestamp := input.timestamp
 
 default allow := false
 
-allow if tool_name in config.allowed_tools[server_name]
+allow if {
+	count(config_problems) == 0
+	tool_name in config.allowed_tools[server_name]
+}
 
 destructive_allowlisted if tool_name in config.destructive_allowlist[server_name]
+
+# A config value of the wrong type refuses every call, since baseline applies to all of them, instead of quietly
+# switching a check off.
+config_problems := lib.config_problems(config, config_kinds)
+
+deny contains lib.deny_reason(
+	pack_name,
+	"invalid_config",
+	sprintf("the %s configuration is invalid: %s", [pack_name, concat("; ", sort(config_problems))]),
+) if {
+	count(config_problems) > 0
+}
 
 deny contains lib.deny_reason(
 	pack_name,

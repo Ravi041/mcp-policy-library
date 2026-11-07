@@ -157,3 +157,32 @@ test_hours_ignored_when_unconfigured if {
 test_no_server_list_means_no_server_check if {
 	count(baseline.deny) == 0 with input as call("anything", "tool") with data.mcp_config.baseline as {}
 }
+
+# Configuration types. Baseline applies to every call, so a mistake here refuses every call.
+
+wrongly_typed_config := {
+	"allowed_servers": "wiki",
+	"allowed_tools": {"wiki": "search"},
+	"destructive_allowlist": ["write_file"],
+	"business_hours": "09:00-17:00",
+}
+
+test_every_config_key_is_type_checked if {
+	every key, value in wrongly_typed_config {
+		cfg := {"allowed_tools": {"wiki": ["search"]}, key: value}
+		not baseline.allow with input as call("wiki", "search") with data.mcp_config.baseline as cfg
+		"baseline.invalid_config" in codes(baseline.deny) with input as call("wiki", "search")
+			with data.mcp_config.baseline as cfg
+	}
+}
+
+test_config_that_is_not_an_object_denies if {
+	"baseline.invalid_config" in codes(baseline.deny) with input as call("wiki", "search")
+		with data.mcp_config.baseline as "wiki"
+}
+
+test_valid_config_has_no_config_problem if {
+	cfg := {"allowed_servers": ["wiki"], "allowed_tools": {"wiki": ["search"]}, "business_hours": hours}
+	not "baseline.invalid_config" in codes(baseline.deny) with input as call("wiki", "search")
+		with data.mcp_config.baseline as cfg
+}

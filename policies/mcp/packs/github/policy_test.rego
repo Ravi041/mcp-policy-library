@@ -395,3 +395,63 @@ test_repository_path_with_control_characters_denied if {
 		denied_with(repo_call("create_or_update_file", object.union(file_write, {"path": path})), "github.invalid_path")
 	}
 }
+
+# Configuration types. A deny list given as a string used to switch its check off.
+
+test_protected_branches_as_a_string_denies if {
+	cfg := object.union(config, {"protected_branches": "main"})
+	request := repo_call("push_files", {"branch": "main", "message": "m", "files": [{"path": "a.txt", "content": "x"}]})
+	not github.allow with input as request with data.mcp_config.github as cfg
+	"github.invalid_config" in codes(github.deny) with input as request with data.mcp_config.github as cfg
+}
+
+test_protected_paths_as_a_string_denies if {
+	cfg := object.union(config, {"protected_paths": ".github/workflows/**"})
+	request := repo_call("create_or_update_file", object.union(file_write, {"path": ".github/workflows/ci.yml"}))
+	not github.allow with input as request with data.mcp_config.github as cfg
+	"github.invalid_config" in codes(github.deny) with input as request with data.mcp_config.github as cfg
+}
+
+# An approval flag given as a string used to let writes through without approval.
+test_approval_flag_as_a_string_denies if {
+	cfg := object.union(config, {"require_approval_for_writes": "true"})
+	request := repo_call("create_pull_request", pr)
+	not github.allow with input as request with data.mcp_config.github as cfg
+	"github.invalid_config" in codes(github.deny) with input as request with data.mcp_config.github as cfg
+}
+
+# Every documented key, each with a value of the wrong type.
+wrongly_typed_config := {
+	"allowed_repos": "acme/web",
+	"allowed_orgs": "acme",
+	"protected_branches": "main",
+	"protected_paths": ".github/**",
+	"require_approval_tools": "merge_pull_request",
+	"allow_merge": "true",
+	"allow_update_pr_branch": "true",
+	"allow_workflow_runs": "true",
+	"allow_copilot": "true",
+	"allow_secret_alerts": "true",
+	"allow_global_read": "true",
+	"allow_pr_approval": "true",
+	"require_approval_for_writes": "true",
+}
+
+test_every_config_key_is_type_checked if {
+	request := repo_call("list_branches", {})
+	every key, value in wrongly_typed_config {
+		cfg := object.union(config, {key: value})
+		not github.allow with input as request with data.mcp_config.github as cfg
+		"github.invalid_config" in codes(github.deny) with input as request with data.mcp_config.github as cfg
+	}
+}
+
+test_config_that_is_not_an_object_denies if {
+	"github.invalid_config" in codes(github.deny) with input as repo_call("list_branches", {})
+		with data.mcp_config.github as ["acme/web"]
+}
+
+test_valid_config_has_no_config_problem if {
+	not "github.invalid_config" in codes(github.deny) with input as repo_call("list_branches", {})
+		with data.mcp_config.github as config
+}
