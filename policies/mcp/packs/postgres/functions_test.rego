@@ -136,6 +136,7 @@ test_extra_blocked_function if {
 
 # The full list, named here rather than read from the policy, so removing a name fails a test.
 all_blocked_functions := [
+	"alter_job",
 	"brin_desummarize_range",
 	"brin_summarize_new_values",
 	"brin_summarize_range",
@@ -145,8 +146,26 @@ all_blocked_functions := [
 	"database_to_xml_and_xmlschema",
 	"database_to_xmlschema",
 	"dblink",
+	"dblink_build_sql_delete",
+	"dblink_build_sql_insert",
+	"dblink_build_sql_update",
+	"dblink_cancel_query",
+	"dblink_close",
 	"dblink_connect",
+	"dblink_connect_u",
+	"dblink_current_query",
+	"dblink_disconnect",
+	"dblink_error_message",
 	"dblink_exec",
+	"dblink_fdw_validator",
+	"dblink_fetch",
+	"dblink_get_connections",
+	"dblink_get_notify",
+	"dblink_get_pkey",
+	"dblink_get_result",
+	"dblink_is_busy",
+	"dblink_open",
+	"dblink_send_query",
 	"gin_clean_pending_list",
 	"lo_creat",
 	"lo_create",
@@ -166,15 +185,22 @@ all_blocked_functions := [
 	"pg_backup_start",
 	"pg_backup_stop",
 	"pg_cancel_backend",
+	"pg_clear_attribute_stats",
+	"pg_clear_relation_stats",
 	"pg_copy_logical_replication_slot",
 	"pg_copy_physical_replication_slot",
 	"pg_create_logical_replication_slot",
 	"pg_create_physical_replication_slot",
 	"pg_create_restore_point",
 	"pg_drop_replication_slot",
+	"pg_file_rename",
+	"pg_file_sync",
+	"pg_file_unlink",
+	"pg_file_write",
 	"pg_import_system_collations",
 	"pg_log_backend_memory_contexts",
 	"pg_log_standby_snapshot",
+	"pg_logdir_ls",
 	"pg_logical_emit_message",
 	"pg_logical_slot_get_binary_changes",
 	"pg_logical_slot_get_changes",
@@ -183,12 +209,17 @@ all_blocked_functions := [
 	"pg_ls_archive_statusdir",
 	"pg_ls_dir",
 	"pg_ls_logdir",
+	"pg_ls_logicalmapdir",
+	"pg_ls_logicalsnapdir",
+	"pg_ls_replslotdir",
+	"pg_ls_summariesdir",
 	"pg_ls_tmpdir",
 	"pg_ls_waldir",
 	"pg_notify",
 	"pg_promote",
 	"pg_read_binary_file",
 	"pg_read_file",
+	"pg_read_file_old",
 	"pg_reload_conf",
 	"pg_replication_origin_advance",
 	"pg_replication_origin_create",
@@ -198,12 +229,17 @@ all_blocked_functions := [
 	"pg_replication_origin_xact_reset",
 	"pg_replication_origin_xact_setup",
 	"pg_replication_slot_advance",
+	"pg_restore_attribute_stats",
+	"pg_restore_relation_stats",
 	"pg_rotate_logfile",
+	"pg_rotate_logfile_old",
 	"pg_sleep",
 	"pg_sleep_for",
 	"pg_sleep_until",
+	"pg_start_backup",
 	"pg_stat_file",
 	"pg_stat_reset",
+	"pg_stat_reset_backend_stats",
 	"pg_stat_reset_replication_slot",
 	"pg_stat_reset_shared",
 	"pg_stat_reset_single_function_counters",
@@ -211,6 +247,7 @@ all_blocked_functions := [
 	"pg_stat_reset_slru",
 	"pg_stat_reset_subscription_stats",
 	"pg_stat_statements_reset",
+	"pg_stop_backup",
 	"pg_switch_wal",
 	"pg_sync_replication_slots",
 	"pg_terminate_backend",
@@ -223,6 +260,8 @@ all_blocked_functions := [
 	"query_to_xml",
 	"query_to_xml_and_xmlschema",
 	"query_to_xmlschema",
+	"schedule",
+	"schedule_in_database",
 	"schema_to_xml",
 	"schema_to_xml_and_xmlschema",
 	"schema_to_xmlschema",
@@ -233,11 +272,93 @@ all_blocked_functions := [
 	"table_to_xmlschema",
 	"ts_rewrite",
 	"ts_stat",
+	"unschedule",
 ]
 
 test_every_blocked_function_denied if {
-	count(all_blocked_functions) == 97
+	count(all_blocked_functions) == 137
 	every name in all_blocked_functions {
 		sql_denied_with(sprintf("SELECT %s(1)", [name]), "postgres.blocked_function")
+	}
+}
+
+# Found in the 0.1.1 security review. Each was checked in pg_proc; the version column of the
+# README says where. The calls below are the ones shown to work on a live server.
+hidden_sql_calls := {
+	# dblink_connect_u and dblink_send_query deleted every row of a table on PostgreSQL 17.11.
+	"SELECT dblink_connect_u('c', 'dbname=demo'), dblink_send_query('c', 'DELETE FROM accounts')",
+	"SELECT dblink_open('c', 'cur', 'SELECT * FROM secrets.tokens')",
+	"SELECT * FROM dblink_fetch('c', 'cur', 10) AS t(token text)",
+	# Returned the row's values, ghp_ token included, from a denied schema.
+	"SELECT dblink_build_sql_insert('secrets.tokens', '1', 1, '{1}', '{1}')",
+	# pg_cron 1.6 ran this DROP TABLE within a minute.
+	"SELECT cron.schedule('* * * * *', 'DROP TABLE users')",
+	"SELECT cron.schedule_in_database('j', '* * * * *', 'DELETE FROM users', 'demo')",
+	"SELECT cron.alter_job(1, command := 'DROP TABLE users')",
+	"SELECT cron.unschedule(1)",
+	# adminpack (PostgreSQL 16 and earlier) writes files on the database host.
+	"SELECT pg_file_write('/tmp/x', 'data', false)",
+	"SELECT pg_catalog.pg_file_unlink('/var/lib/postgresql/data/postgresql.conf')",
+}
+
+test_hidden_sql_calls_denied if {
+	every sql in hidden_sql_calls {
+		sql_denied_with(sql, "postgres.blocked_function")
+	}
+}
+
+added_in_security_review := {
+	# Every dblink function: connections, hidden queries and their results, and rows read by name.
+	"dblink_build_sql_delete",
+	"dblink_build_sql_insert",
+	"dblink_build_sql_update",
+	"dblink_cancel_query",
+	"dblink_close",
+	"dblink_connect_u",
+	"dblink_current_query",
+	"dblink_disconnect",
+	"dblink_error_message",
+	"dblink_fdw_validator",
+	"dblink_fetch",
+	"dblink_get_connections",
+	"dblink_get_notify",
+	"dblink_get_pkey",
+	"dblink_get_result",
+	"dblink_is_busy",
+	"dblink_open",
+	"dblink_send_query",
+	# pg_cron runs scheduled SQL given as a string.
+	"alter_job",
+	"schedule",
+	"schedule_in_database",
+	"unschedule",
+	# adminpack reaches the host's files.
+	"pg_file_rename",
+	"pg_file_sync",
+	"pg_file_unlink",
+	"pg_file_write",
+	"pg_logdir_ls",
+	"pg_read_file_old",
+	"pg_rotate_logfile_old",
+	# Server control and statistics writes from other PostgreSQL versions.
+	"pg_start_backup",
+	"pg_stop_backup",
+	"pg_clear_attribute_stats",
+	"pg_clear_relation_stats",
+	"pg_restore_attribute_stats",
+	"pg_restore_relation_stats",
+	"pg_stat_reset_backend_stats",
+	# Directory listings on the host, like the pg_ls_* functions already blocked.
+	"pg_ls_logicalmapdir",
+	"pg_ls_logicalsnapdir",
+	"pg_ls_replslotdir",
+	"pg_ls_summariesdir",
+}
+
+test_functions_added_in_security_review_denied if {
+	count(added_in_security_review) == 40
+	every name in added_in_security_review {
+		sql_denied_with(sprintf("SELECT %s(1)", [name]), "postgres.blocked_function")
+		name in all_blocked_functions
 	}
 }
