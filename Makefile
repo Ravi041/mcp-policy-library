@@ -3,6 +3,11 @@
 BIN := $(CURDIR)/.bin
 export PATH := $(BIN):$(PATH)
 
+# Recipes call the tools through these, because GNU Make 3.81 (the macOS default) looks up a
+# simple command in its own PATH, not the exported one above. The pinned copies in .bin/ win.
+OPA := $(firstword $(wildcard $(BIN)/opa) opa)
+REGAL := $(firstword $(wildcard $(BIN)/regal) regal)
+
 VERSION ?= dev
 COVERAGE_THRESHOLD ?= 90
 
@@ -15,23 +20,23 @@ tools: ## Install pinned OPA and Regal into .bin/
 	sh scripts/install-tools.sh
 
 fmt: ## Rewrite Rego files in canonical format
-	opa fmt --write $(REGO_DIRS)
+	$(OPA) fmt --write $(REGO_DIRS)
 
 fmt-check: ## Fail if any Rego file is not canonically formatted
-	@test -z "$$(opa fmt --list $(REGO_DIRS))" || { echo "needs opa fmt:"; opa fmt --list $(REGO_DIRS); exit 1; }
-	opa fmt --diff --fail $(REGO_DIRS)
+	@test -z "$$($(OPA) fmt --list $(REGO_DIRS))" || { echo "needs opa fmt:"; $(OPA) fmt --list $(REGO_DIRS); exit 1; }
+	$(OPA) fmt --diff --fail $(REGO_DIRS)
 
 check: ## Compile with strict checks
-	opa check --strict $(REGO_DIRS)
+	$(OPA) check --strict $(REGO_DIRS)
 
 lint: ## Run Regal
-	regal lint $(REGO_DIRS)
+	$(REGAL) lint $(REGO_DIRS)
 
 test: ## Run Rego unit tests
-	opa test $(REGO_DIRS)
+	$(OPA) test $(REGO_DIRS)
 
 coverage: ## Run unit tests and enforce the coverage threshold
-	opa test --coverage --threshold $(COVERAGE_THRESHOLD) $(REGO_DIRS) > coverage.json || { \
+	$(OPA) test --coverage --threshold $(COVERAGE_THRESHOLD) $(REGO_DIRS) > coverage.json || { \
 		sh scripts/coverage-report.sh coverage.json; exit 1; }
 	@sh scripts/coverage-report.sh coverage.json
 
@@ -43,7 +48,7 @@ qa: ## Repository quality gates: contracts, neutrality, pack completeness, docs
 
 bundle: ## Build the policy bundle at dist/mcp-policy-library.tar.gz
 	mkdir -p dist
-	opa build --bundle policies/ --ignore '*_test.rego' --revision $(VERSION) --output dist/mcp-policy-library.tar.gz
+	$(OPA) build --bundle policies/ --ignore '*_test.rego' --revision $(VERSION) --output dist/mcp-policy-library.tar.gz
 
 config-bundle: ## Build dist/config.tar.gz from every pack's data.example.json
 	sh scripts/build-config-bundle.sh dist/config.tar.gz
