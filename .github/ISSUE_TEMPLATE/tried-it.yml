@@ -1,0 +1,23 @@
+name: I tried it
+description: Tell us how the quickstart or the gateway runbook went, including when everything worked.
+labels: [question]
+body:
+  - type: dropdown
+    id: what
+    attributes:
+      label: What did you try?
+      options: [Quickstart (opa eval), "Gateway runbook (try.sh)", OPA sidecar, Other]
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: Did it work?
+      options: [Yes, Partly, No]
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: What was confusing, missing or wrong?
+      description: Your OS, tool versions and the step where it went wrong help most.

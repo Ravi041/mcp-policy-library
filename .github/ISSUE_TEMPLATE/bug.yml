@@ -1,0 +1,37 @@
+name: Bug report
+description: A decision that is wrong, a crash, or a doc that does not match behavior. Security bypasses go through the private advisory link, not here.
+labels: [bug]
+body:
+  - type: textarea
+    id: input
+    attributes:
+      label: Input document
+      description: The normalized input you sent to OPA. Remove secrets.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration (data.mcp_config)
+      render: json
+  - type: textarea
+    id: got
+    attributes:
+      label: Decision you got
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Decision you expected
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: "policy_version from the decision, and `opa version`."
+    validations:
+      required: true

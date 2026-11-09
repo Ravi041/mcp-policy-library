@@ -6,7 +6,7 @@ Each release's `policy_version` matches its tag. Every decision carries it, so y
 
 ### Security
 
-Found in a penetration test of v0.1.0 and a security review of the fixes that followed. Upgrade before relying on the Postgres or GitHub packs.
+Found in a penetration test of v0.1.0 and a security review of the fixes that followed. Upgrade before relying on the Postgres or GitHub packs. Advisory: [GHSA-2g75-x7cr-hv92](https://github.com/Ravi041/mcp-policy-library/security/advisories/GHSA-2g75-x7cr-hv92).
 
 - **postgres (high):** Functions that run SQL given as a string, or that change the server, were missing from the blocked list, so a statement the pack classed as a read could write. On PostgreSQL 17, `SELECT dblink_connect_u(...), dblink_send_query('c', 'DELETE FROM accounts')` deleted every row, `cron.schedule('* * * * *', 'DROP TABLE users')` dropped the table a minute later, and `dblink_build_sql_insert('secrets.tokens', ...)` returned a row from a denied schema. The pack now blocks 40 more functions, 137 in all: every `dblink` function, pg_cron's scheduling functions, adminpack's file functions, `pg_start_backup` and `pg_stop_backup` from PostgreSQL 14, the statistics writers from PostgreSQL 18, and four more `pg_ls_*` directory listings.
 - **postgres (medium):** A `--` comment between a quoted schema name and its dot, as in `"hr-data" -- x` and then `.salaries` on the next line, hid the reference from `denied_schemas`. PostgreSQL treats the comment as whitespace and returned the rows. Quoted names are now matched after comments are removed.
