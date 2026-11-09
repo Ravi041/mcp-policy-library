@@ -43,7 +43,7 @@ download() {
 		echo "no pinned checksum for $1 in tools.sha256" >&2
 		exit 1
 	fi
-	curl -fsSL -o "$3" "$2"
+	curl -fsSL --retry 5 --retry-delay 3 -o "$3" "$2"
 	actual="$(sha256 "$3")"
 	if [ "$actual" != "$expected" ]; then
 		rm -f "$3"
