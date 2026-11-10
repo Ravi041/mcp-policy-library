@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Ravi041/mcp-policy-library/security/advisories/new
+    about: A call that is allowed but should be denied is a vulnerability. Report it privately, not in a public issue.
+  - name: Ask a question or show how you use it
+    url: https://github.com/Ravi041/mcp-policy-library/discussions
+    about: Usage questions, ideas and feedback belong in Discussions.

@@ -1,0 +1,22 @@
+name: New pack or rule request
+description: Ask for a pack for another MCP server, or a rule an existing pack is missing.
+labels: [enhancement]
+body:
+  - type: input
+    id: server
+    attributes:
+      label: MCP server and version
+      description: Name, repository and the release you use.
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: What should an agent be stopped from doing?
+      description: Name the tool calls and arguments that worry you. Link the tool definitions if you can.
+    validations:
+      required: true
+  - type: textarea
+    id: allowed
+    attributes:
+      label: What should still be allowed?

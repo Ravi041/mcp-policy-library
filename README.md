@@ -1,6 +1,10 @@
 # mcp-policy-library
 
-Tested OPA/Rego policy packs that decide whether an AI agent may make a given MCP tool call.
+[![ci](https://github.com/Ravi041/mcp-policy-library/actions/workflows/ci.yml/badge.svg)](https://github.com/Ravi041/mcp-policy-library/actions/workflows/ci.yml)
+[![release](https://img.shields.io/github/v/release/Ravi041/mcp-policy-library)](https://github.com/Ravi041/mcp-policy-library/releases/latest)
+[![license](https://img.shields.io/github/license/Ravi041/mcp-policy-library)](LICENSE)
+
+Guardrails for AI agents that use MCP: tested OPA/Rego policy packs that block dangerous tool calls (a push to `main`, a SQL write, a path traversal) before they run, and explain every refusal.
 
 AI agents act by calling tools on MCP (Model Context Protocol) servers: they open pull requests, write files and run SQL. Whether a call should run is an authorization decision. It should not depend on the model choosing to behave, and it should not be buried in one gateway's code. This library keeps that decision as policy-as-code: reviewed, tested, versioned and loadable by any MCP gateway, proxy, control plane or plain OPA sidecar.
 
@@ -13,7 +17,7 @@ agent --tools/call--> gateway / proxy / control plane --input--> OPA --decision-
 
 ## Status
 
-Early release (v0.1). The packs are unit-tested, checked against attempts to get around them, and verified end to end behind [agentgateway](docs/try-it-with-gateways.md) with real MCP servers. Before you rely on it in production, know that:
+Early release (v0.1). **Use v0.1.1 or later:** v0.1.0 has bypasses, listed in [GHSA-2g75-x7cr-hv92](https://github.com/Ravi041/mcp-policy-library/security/advisories/GHSA-2g75-x7cr-hv92). The packs are unit-tested, checked against attempts to get around them, and verified end to end behind [agentgateway](docs/try-it-with-gateways.md) with real MCP servers. Before you rely on it in production, know that:
 
 - **It is one layer, not the only one.** Keep least-privilege credentials underneath: a read-only database role, a scoped GitHub token, and the filesystem server's own allowed directories. The Postgres pack in particular inspects SQL as text and [cannot catch everything](packs/postgres/README.md#read-this-first-sql-inspection-here-is-best-effort).
 - **Only agentgateway has been tested live.** Other gateways need an adapter like the one in [`integrations/agentgateway/`](integrations/agentgateway/).

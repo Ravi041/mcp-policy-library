@@ -58,7 +58,7 @@ fetch() {
 		return 0
 	fi
 	tmp="$bin/$name.download"
-	curl -fsSL -o "$tmp" "$url"
+	curl -fsSL --retry 5 --retry-delay 3 -o "$tmp" "$url"
 	actual="$(sha256 "$tmp")"
 	if [ "$actual" != "$expected" ]; then
 		rm -f "$tmp"
