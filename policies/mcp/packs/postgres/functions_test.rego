@@ -136,10 +136,16 @@ test_extra_blocked_function if {
 
 # The full list, named here rather than read from the policy, so removing a name fails a test.
 all_blocked_functions := [
+	"addgeometrycolumn",
 	"alter_job",
 	"brin_desummarize_range",
 	"brin_summarize_new_values",
 	"brin_summarize_range",
+	"connectby",
+	"crosstab",
+	"crosstab2",
+	"crosstab3",
+	"crosstab4",
 	"cursor_to_xml",
 	"cursor_to_xmlschema",
 	"database_to_xml",
@@ -166,7 +172,20 @@ all_blocked_functions := [
 	"dblink_is_busy",
 	"dblink_open",
 	"dblink_send_query",
+	"dropgeometrycolumn",
+	"dropgeometrytable",
+	"get_raw_page",
 	"gin_clean_pending_list",
+	"http",
+	"http_delete",
+	"http_get",
+	"http_head",
+	"http_patch",
+	"http_post",
+	"http_put",
+	"http_reset_curlopt",
+	"http_set_curlopt",
+	"invoke",
 	"lo_creat",
 	"lo_create",
 	"lo_export",
@@ -177,11 +196,15 @@ all_blocked_functions := [
 	"lo_truncate64",
 	"lo_unlink",
 	"lowrite",
+	"master_run_on_worker",
 	"nextval",
 	"pg_advisory_lock",
 	"pg_advisory_lock_shared",
 	"pg_advisory_xact_lock",
 	"pg_advisory_xact_lock_shared",
+	"pg_background_detach",
+	"pg_background_launch",
+	"pg_background_result",
 	"pg_backup_start",
 	"pg_backup_stop",
 	"pg_cancel_backend",
@@ -257,9 +280,16 @@ all_blocked_functions := [
 	"pg_try_advisory_xact_lock_shared",
 	"pg_wal_replay_pause",
 	"pg_wal_replay_resume",
+	"populate_geometry_columns",
+	"query_export_to_s3",
 	"query_to_xml",
 	"query_to_xml_and_xmlschema",
 	"query_to_xmlschema",
+	"run_command_on_all_nodes",
+	"run_command_on_colocated_placements",
+	"run_command_on_placements",
+	"run_command_on_shards",
+	"run_command_on_workers",
 	"schedule",
 	"schedule_in_database",
 	"schema_to_xml",
@@ -267,16 +297,22 @@ all_blocked_functions := [
 	"schema_to_xmlschema",
 	"set_config",
 	"setval",
+	"st_estimatedextent",
+	"st_findextent",
+	"st_fromflatgeobuftotable",
+	"table_import_from_s3",
 	"table_to_xml",
 	"table_to_xml_and_xmlschema",
 	"table_to_xmlschema",
 	"ts_rewrite",
 	"ts_stat",
 	"unschedule",
+	"updategeometrysrid",
+	"xpath_table",
 ]
 
 test_every_blocked_function_denied if {
-	count(all_blocked_functions) == 137
+	count(all_blocked_functions) == 173
 	every name in all_blocked_functions {
 		sql_denied_with(sprintf("SELECT %s(1)", [name]), "postgres.blocked_function")
 	}
@@ -353,6 +389,83 @@ added_in_security_review := {
 	"pg_ls_logicalsnapdir",
 	"pg_ls_replslotdir",
 	"pg_ls_summariesdir",
+}
+
+# Extension functions that run SQL given as a string, read or change a table named in a string,
+# or reach the network. Each name was checked in the extension's install script or reference.
+added_from_extensions := {
+	# tablefunc 1.0 runs the query in its first argument.
+	"connectby",
+	"crosstab",
+	"crosstab2",
+	"crosstab3",
+	"crosstab4",
+	# xml2 1.1 and pageinspect 1.5 read a relation named in a string.
+	"xpath_table",
+	"get_raw_page",
+	# PostGIS 3.5 alters, drops, creates or reads a table named in a string.
+	"addgeometrycolumn",
+	"dropgeometrycolumn",
+	"dropgeometrytable",
+	"populate_geometry_columns",
+	"st_estimatedextent",
+	"st_findextent",
+	"st_fromflatgeobuftotable",
+	"updategeometrysrid",
+	# pgsql-http 1.6 and pg_net 0.14 send HTTP requests from the database host.
+	"http",
+	"http_delete",
+	"http_get",
+	"http_head",
+	"http_patch",
+	"http_post",
+	"http_put",
+	"http_reset_curlopt",
+	"http_set_curlopt",
+	# aws_s3 and aws_lambda on Amazon RDS and Aurora.
+	"invoke",
+	"query_export_to_s3",
+	"table_import_from_s3",
+	# pg_background 1.3 runs SQL in another session.
+	"pg_background_detach",
+	"pg_background_launch",
+	"pg_background_result",
+	# Citus 12.1 runs a command on other nodes.
+	"master_run_on_worker",
+	"run_command_on_all_nodes",
+	"run_command_on_colocated_placements",
+	"run_command_on_placements",
+	"run_command_on_shards",
+	"run_command_on_workers",
+}
+
+test_extension_functions_denied if {
+	count(added_from_extensions) == 36
+	every name in added_from_extensions {
+		sql_denied_with(sprintf("SELECT %s(1)", [name]), "postgres.blocked_function")
+		name in all_blocked_functions
+	}
+}
+
+calls_through_extensions := {
+	"SELECT * FROM crosstab('SELECT id, name, token FROM secrets.tokens') AS t(id int, a text)",
+	"SELECT * FROM connectby('secrets.tokens', 'id', 'parent', '1', 0) AS t(id text, parent text, level int)",
+	"SELECT * FROM xpath_table('id', 'body', 'secrets.tokens', '/a', 'true') AS t(id int, a text)",
+	"SELECT get_raw_page('secrets.tokens', 0)",
+	"SELECT DropGeometryTable('public', 'users')",
+	"SELECT AddGeometryColumn('public', 'users', 'geom', 4326, 'POINT', 2)",
+	"SELECT status FROM http_get('http://169.254.169.254/latest/meta-data/')",
+	"SELECT net.http_post('https://example.com', '{}'::jsonb)",
+	"SELECT * FROM aws_s3.query_export_to_s3('SELECT * FROM secrets.tokens', 'uri')",
+	"SELECT * FROM aws_lambda.invoke('fn', '{}'::json)",
+	"SELECT pg_background_launch('DROP TABLE users')",
+	"SELECT run_command_on_workers('DROP TABLE users')",
+}
+
+test_calls_through_extensions_denied if {
+	every sql in calls_through_extensions {
+		sql_denied_with(sql, "postgres.blocked_function")
+	}
 }
 
 test_functions_added_in_security_review_denied if {

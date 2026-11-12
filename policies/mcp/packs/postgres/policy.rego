@@ -201,6 +201,22 @@ referenced_identifiers contains lower(name) if {
 	some name in regex.find_n(identifier_pattern, code_with_identifiers, -1)
 }
 
+# Catalogs that hold password hashes, connection strings with passwords, and large-object
+# data. PostgreSQL shows them only to privileged roles, and an agent has no use for them.
+# pg_roles, pg_user and pg_stat_subscription give the same facts without the secrets.
+credential_relations := {
+	"pg_authid",
+	"pg_largeobject",
+	"pg_shadow",
+	"pg_subscription",
+	"pg_user_mapping",
+	"pg_user_mappings",
+}
+
+# Schemas that hold other tables' rows under another name: pg_toast keeps the out-of-line
+# values of every table, so reading it goes around denied_schemas.
+storage_schemas := {"pg_toast"}
+
 schema_name_is_string if is_string(input.arguments.schema_name)
 
 optional_tool_is_enabled if tool_name in config.allowed_optional_tools
@@ -370,6 +386,22 @@ deny contains lib.deny_reason(
 ) if {
 	count(denied_schemas) > 0
 	some name in (referenced_identifiers & statistics_relations)
+}
+
+deny contains lib.deny_reason(
+	pack_name,
+	"sensitive_catalog",
+	sprintf("%q holds credentials or raw stored data, so it is never readable through this pack", [name]),
+) if {
+	some name in (referenced_identifiers & credential_relations)
+}
+
+deny contains lib.deny_reason(
+	pack_name,
+	"sensitive_catalog",
+	sprintf("schema %q holds the stored values of other tables, so it is never readable through this pack", [name]),
+) if {
+	some name in (referenced_schemas & storage_schemas)
 }
 
 default allow := false

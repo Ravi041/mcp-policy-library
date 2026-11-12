@@ -396,6 +396,36 @@ test_repository_path_with_control_characters_denied if {
 	}
 }
 
+# The server puts the path into the request URL as it is, so GitHub decodes "%67" to "g" and
+# drops everything from "?" or "#". Each of these wrote a protected file while the pack saw
+# another name.
+paths_the_url_would_rewrite := [
+	".%67ithub/workflows/ci.yml",
+	".github/workflows%2Fci.yml",
+	".github/%77orkflows/ci.yml",
+	"%2egithub/workflows/ci.yml",
+	".github/workflows/ci.yml?x=1",
+	".github/workflows/ci.yml#x",
+	"CODEOWNERS?x=1",
+	"CODEOWNERS#x",
+	"src/100%.go",
+]
+
+test_repository_path_with_url_syntax_denied if {
+	every path in paths_the_url_would_rewrite {
+		denied_with(repo_call("create_or_update_file", object.union(file_write, {"path": path})), "github.invalid_path")
+		denied_with(repo_call("delete_file", {"branch": "x", "message": "m", "path": path}), "github.invalid_path")
+		files := [{"path": "a.txt", "content": "x"}, {"path": path, "content": "x"}]
+		denied_with(repo_call("push_files", {"branch": "x", "message": "m", "files": files}), "github.invalid_path")
+	}
+}
+
+test_ordinary_repository_paths_still_allowed if {
+	every path in ["src/a.go", "docs/My File (1).md", "a+b=c@2x.png", "pkg/[id]/~page.tsx", "données/é.txt"] {
+		allowed(repo_call("create_or_update_file", object.union(file_write, {"path": path})))
+	}
+}
+
 # Configuration types. A deny list given as a string used to switch its check off.
 
 test_protected_branches_as_a_string_denies if {

@@ -2,9 +2,27 @@
 
 Each release's `policy_version` matches its tag. Every decision carries it, so you can tell which rules made a decision.
 
+## 0.1.3
+
+### Security
+
+Found in a penetration test of 0.1.2. Upgrade before relying on the GitHub or Postgres packs.
+
+- **github (high):** A percent-encoded file path went around `protected_paths`. `create_or_update_file` with the path `.%67ithub/workflows/ci.yml` was allowed, because the pack compared the text as sent and refused only the escapes for `.`, `/` and `\`. `github-mcp-server` v2.1.0 puts the path into the request URL without escaping it, which was confirmed against a local mock of the API, so GitHub would decode it to `.github/workflows/ci.yml`. It was not tried against github.com. The pack now refuses any repository path that contains `%`.
+- **github (medium):** A path ending in a query or fragment, such as `CODEOWNERS?x=1` or `CODEOWNERS#x`, did not match a protected path given by name, while the URL built from it still addresses `CODEOWNERS`. The pack now refuses any repository path that contains `?` or `#`. Both refusals use `github.invalid_path` and apply to `create_or_update_file`, `delete_file` and every file of `push_files`.
+- **postgres (medium):** Extension functions that run SQL given as a string, name a table in a string or reach the network were not blocked, so a statement the pack classed as a read could write, read a denied schema or call out from the database host. Examples: `crosstab('SELECT ... FROM secrets.tokens')`, `DropGeometryTable('public', 'users')`, `http_get('http://169.254.169.254/...')`, `aws_s3.query_export_to_s3(...)` and `pg_background_launch('DROP TABLE users')`. The pack now blocks 36 more functions, 173 in all, from tablefunc, xml2, pageinspect, PostGIS, pgsql-http, pg_net, aws_s3, aws_lambda, pg_background and Citus. These were found by reading the policy and checked in each extension's install script or reference, not on a running database. The [pack README](packs/postgres/README.md#blocked-functions) lists them by extension.
+- **postgres (low):** `pg_authid`, `pg_shadow`, `pg_user_mapping`, `pg_user_mappings`, `pg_subscription`, `pg_largeobject` and the `pg_toast` schema could be named in a read. They hold password hashes, connection passwords, large-object data and the stored values of other tables, including tables in a denied schema. PostgreSQL shows them only to privileged roles, so this mattered when the agent's role was one. They are now refused, with the new code `postgres.sensitive_catalog`.
+
+### Changed
+
+- **github:** A file path that contains `%`, `?` or `#` is refused for writes, including a real file such as `docs/C#/intro.md`. Reads are not affected.
+- **postgres:** A function of your own named like a newly blocked one, such as `http`, `invoke` or `crosstab`, is now refused, and so is a column or alias named like one of the refused catalogs. Run `make replay` on a recorded decision log to see which of your calls move before you upgrade.
+
 ## 0.1.2
 
-No policy rule changed in this release. Decisions are the same as in 0.1.1.
+Not published as a release. Its changes ship in 0.1.3.
+
+No policy rule changed in this version. Decisions are the same as in 0.1.1.
 
 ### Added
 

@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "request_id": "req-crosstab",
+  "timestamp": "2026-11-05T12:00:00Z",
+  "principal": {
+    "id": "alice@example.com",
+    "type": "user",
+    "roles": [
+      "developer"
+    ]
+  },
+  "agent": {
+    "id": "agent-1",
+    "name": "example-agent"
+  },
+  "server": {
+    "name": "postgres",
+    "transport": "stdio"
+  },
+  "tool": {
+    "name": "execute_sql"
+  },
+  "arguments": {
+    "sql": "SELECT * FROM crosstab('SELECT id, name, token FROM secrets.tokens') AS t(id int, a text)"
+  },
+  "context": {
+    "environment": "production"
+  }
+}

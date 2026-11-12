@@ -39,7 +39,7 @@ Everything else, including gists, projects, notifications and stars, is denied a
 | `github.global_read_not_allowed` | the tool is in the global reads group and `allow_global_read` is off |
 | `github.invalid_branch` | `branch` is missing or is not a plain branch name |
 | `github.protected_branch` | a write or branch creation targets a protected branch, or a pull request's `head` is a protected branch |
-| `github.invalid_path` | a file path is missing, malformed or has traversal |
+| `github.invalid_path` | a file path is missing or not a string, has `..`, a backslash or a control character, or contains `%`, `?` or `#` |
 | `github.protected_path` | a file path matches `protected_paths` |
 | `github.symlink_write` | `create_or_update_file` sets `allow_symlink_write` |
 | `github.missing_argument` | `create_pull_request` has no string `base` or `head` |
@@ -84,5 +84,6 @@ Only a literal `true` turns on a flag.
 - **Use GitHub branch protection as well.** This pack is a layer in front of the server, not a replacement for rulesets, least-privilege tokens or required reviews.
 - **Tools that act on a pull request number cannot see its branches.** `merge_pull_request` and `update_pull_request_branch` are off by default for this reason. An agent cannot open a pull request from a protected branch, which closes the path where `update_pull_request_branch` merges an agent's branch into `main`, but a pull request a human opened from one is still a target once these tools are on.
 - **CI can run code from any branch.** `protected_paths` stops edits to workflow files, but a workflow that runs on `push` or `pull_request` may run scripts the agent can change, such as a `Makefile` or `package.json`, with the repository's secrets. Add those paths, and other CI systems' files such as `Jenkinsfile` or `.circleci/**`, to `protected_paths` if your workflows run them, and keep secrets out of workflows that run on branches.
+- **File paths with `%`, `?` or `#` are refused.** The server puts the path into the request URL without escaping it, so GitHub decodes a percent escape and cuts the path at `?` or `#`, and the file written is not the one named. A real file such as `docs/C#/intro.md` cannot be written through `create_or_update_file`, `delete_file` or `push_files`; reads are not affected.
 - **Branch names are matched strictly.** Names with characters outside letters, digits and `. _ / # + = @ -` are refused, including non-ASCII names, even when git would accept them.
 - **Resources are not covered.** This pack authorizes tool calls only. If your deployment exposes MCP resources from this server, the integration must authorize them separately.
