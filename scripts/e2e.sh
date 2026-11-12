@@ -92,7 +92,7 @@ for example in examples/*/; do
 	[ -f "${example}input.json" ] || continue
 	checked=$((checked + 1))
 	decide "$port" "${example}input.json"
-	opa eval --fail --input "$work/decision.json" --data "${example}decision.json" 'input == data' >/dev/null 2>&1 ||
+	opa eval --fail --input "$work/decision.json" --data "${example}decision.json" 'input = data' >/dev/null 2>&1 ||
 		fail "$example" "decision differs: $(cat "$work/decision.json")"
 done
 

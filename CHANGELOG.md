@@ -2,6 +2,18 @@
 
 Each release's `policy_version` matches its tag. Every decision carries it, so you can tell which rules made a decision.
 
+## 0.1.2
+
+No policy rule changed in this release. Decisions are the same as in 0.1.1.
+
+### Added
+
+- **Trace replay.** `make replay TRACE=<decision log> CONFIG=<config>` evaluates recorded tool calls again and fails when any outcome moved: a call that was refused and is now allowed, or a call that was allowed and is now refused. It also fails when an allowed call's input breaks the input schema. Reviewed moves can be accepted by decision ID. See [docs/testing.md](docs/testing.md#replaying-real-traces).
+
+### Fixed
+
+- **tests:** Four checks could not fail, because `opa eval --fail` exits 0 for a comparison that is false: the comparison of each example with its `decision.json` in `make fixtures` and `make e2e`, and the `mcp_config`-only and `policy_version` gates in `make qa`. They now use unification. Every example and gate passes with the corrected checks.
+
 ## 0.1.1
 
 ### Security

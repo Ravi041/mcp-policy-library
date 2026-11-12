@@ -76,7 +76,7 @@ opa eval --format=pretty \
       "pack:github"
     ]
   },
-  "policy_version": "0.1.1",
+  "policy_version": "0.1.2",
   "require_approval": false
 }
 ```
@@ -98,7 +98,7 @@ curl -s -H 'Content-Type: application/json' \
 ```
 
 ```json
-{"result":{"allow":true,"deny":[],"obligations":{"audit_tags":["github:write","pack:github"]},"policy_version":"0.1.1","require_approval":false}}
+{"result":{"allow":true,"deny":[],"obligations":{"audit_tags":["github:write","pack:github"]},"policy_version":"0.1.2","require_approval":false}}
 ```
 
 ## How it works
@@ -212,13 +212,14 @@ Everything runs with only OPA and Regal. `make ci` runs every layer except the D
 | Static | `make fmt-check check lint` | `opa fmt`, `opa check --strict` and Regal |
 | Unit | `make test`, `make coverage` | Allow, deny and edge cases for every pack, and router invariants; at least 90% coverage |
 | Contract | `make fixtures` | Every fixture and example is valid against the input schema, every decision is valid against the decision schema, and every outcome matches what the file name says |
+| Replay | `make replay` | Recorded tool calls, replayed from an OPA decision log, still get the outcome they got: nothing that was refused is now allowed, and nothing that was allowed is now refused |
 | QA | `make qa` | The design principles hold: no vendor names in policies, only documented input fields, only baseline reads annotations, no fail-open negations, every pack complete and every deny code documented, actions pinned by SHA |
 | End to end | `make e2e` | A real OPA server, loaded from the policy and config bundles, answers every fixture and example correctly over HTTP. With no config, nothing is allowed. Malformed requests fail closed. |
 | End to end, Docker | `make e2e-docker` | The Docker Compose sidecar serves correct decisions |
 
 Three GitHub Actions workflows run these on every pull request:
 
-- **`ci`:** static, unit and contract tests, uploading the bundle as an artifact. On `v*` tags it attaches the bundle to the release.
+- **`ci`:** static, unit, contract and replay tests, uploading the bundle as an artifact. On `v*` tags it attaches the bundle to the release.
 - **`qa`:** the QA gates.
 - **`e2e`:** the HTTP and Docker end-to-end tests.
 

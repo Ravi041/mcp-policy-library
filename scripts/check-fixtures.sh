@@ -83,7 +83,7 @@ for example in examples/*/; do
 
 	evaluate "${example}input.json"
 
-	if ! opa eval --fail --input "$work/decision.json" --data "${example}decision.json" 'input == data' >/dev/null 2>&1; then
+	if ! opa eval --fail --input "$work/decision.json" --data "${example}decision.json" 'input = data' >/dev/null 2>&1; then
 		fail "$example" "decision differs from decision.json: $(cat "$work/decision.json")"
 	fi
 done
