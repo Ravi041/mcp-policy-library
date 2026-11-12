@@ -7,6 +7,6 @@
       "pack:github"
     ]
   },
-  "policy_version": "0.1.1",
+  "policy_version": "0.1.2",
   "require_approval": false
 }

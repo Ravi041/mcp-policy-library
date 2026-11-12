@@ -2,7 +2,9 @@
 
 Each release's `policy_version` matches its tag. Every decision carries it, so you can tell which rules made a decision.
 
-## Unreleased
+## 0.1.2
+
+No policy rule changed in this release. Decisions are the same as in 0.1.1.
 
 ### Added
 

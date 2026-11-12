@@ -76,7 +76,7 @@ opa eval --format=pretty \
       "pack:github"
     ]
   },
-  "policy_version": "0.1.1",
+  "policy_version": "0.1.2",
   "require_approval": false
 }
 ```
@@ -98,7 +98,7 @@ curl -s -H 'Content-Type: application/json' \
 ```
 
 ```json
-{"result":{"allow":true,"deny":[],"obligations":{"audit_tags":["github:write","pack:github"]},"policy_version":"0.1.1","require_approval":false}}
+{"result":{"allow":true,"deny":[],"obligations":{"audit_tags":["github:write","pack:github"]},"policy_version":"0.1.2","require_approval":false}}
 ```
 
 ## How it works
