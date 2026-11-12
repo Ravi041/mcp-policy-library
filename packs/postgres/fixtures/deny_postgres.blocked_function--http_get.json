@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "request_id": "req-http-get",
+  "timestamp": "2026-11-05T12:00:00Z",
+  "principal": {
+    "id": "alice@example.com",
+    "type": "user",
+    "roles": [
+      "developer"
+    ]
+  },
+  "agent": {
+    "id": "agent-1",
+    "name": "example-agent"
+  },
+  "server": {
+    "name": "postgres",
+    "transport": "stdio"
+  },
+  "tool": {
+    "name": "execute_sql"
+  },
+  "arguments": {
+    "sql": "SELECT status FROM http_get('http://169.254.169.254/latest/meta-data/')"
+  },
+  "context": {
+    "environment": "production"
+  }
+}

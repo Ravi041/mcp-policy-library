@@ -162,6 +162,11 @@ repo_path_is_unsafe(path) if lib.path_has_traversal(path)
 
 repo_path_is_unsafe(path) if lib.path_has_invalid_chars(path)
 
+# The server builds the request URL from the path without escaping it, so GitHub decodes any
+# percent escape, and reads "?" and "#" as the end of the path. The file that is written is
+# then not the one checked here: ".%67ithub/workflows/ci.yml" lands in .github/workflows.
+repo_path_is_unsafe(path) if regex.match(`[%?#]`, path)
+
 repo_path_is_protected(path) if {
 	canonical := lower(concat("/", lib.path_segments(path)))
 	some pattern in protected_paths
@@ -300,7 +305,7 @@ deny contains lib.deny_reason(
 deny contains lib.deny_reason(
 	pack_name,
 	"invalid_path",
-	sprintf("repository path %q contains a traversal sequence or control characters", [path]),
+	sprintf("repository path %q contains a traversal sequence, a control character or one of %%, ? and #", [path]),
 ) if {
 	some path in repo_paths
 	repo_path_is_unsafe(path)
