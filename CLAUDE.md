@@ -31,9 +31,11 @@ policies/                    Rego only, so plain OPA commands work
 packs/<pack>/                README.md, data.example.json, fixtures/
 schemas/                     input and decision contracts
 scripts/                     tool install, fixture check, QA, end-to-end tests
+  replay/                    trace replay Rego (package mcp_replay), covered by make test
 integrations/                adapters and deployment examples, gateway specifics go here
   agentgateway/policy/       adapter Rego (package mcp_adapters.agentgateway), covered by make test
 examples/<name>/             input.json and decision.json, end to end
+examples/trace/              a sample decision log for make replay
 docs/                        input contract, decision model, writing a pack, testing
 ```
 
@@ -51,6 +53,7 @@ Install the pinned tools once with `make tools`. They land in `.bin/`, which the
 | Unit tests | `make test` |
 | Coverage, fails below 90% | `make coverage` |
 | Fixtures and examples | `make fixtures` |
+| Replay a recorded decision log | `make replay TRACE=<log> CONFIG=<data.json>` |
 | QA gates | `make qa` |
 | Build the bundle | `make bundle` |
 | End-to-end over HTTP | `make e2e` |
@@ -76,6 +79,8 @@ Install the pinned tools once with `make tools`. They land in `.bin/`, which the
 - An undefined value inside `sprintf` makes the whole reason undefined, and the deny vanishes. Use a defaulted value such as `tool_name` in messages.
 - Builtin errors evaluate as undefined, so the same rule applies to wrong types.
 - Only a literal `true` opens a config flag; use `lib.flag_enabled`.
+
+In scripts, `opa eval --fail 'a == b'` exits 0 when the comparison is false, because `false` is a defined result. Use unification, `a = b`, or a query of several expressions.
 
 ## Don'ts
 

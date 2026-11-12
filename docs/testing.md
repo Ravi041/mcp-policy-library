@@ -1,12 +1,13 @@
 # Testing
 
-Five layers of tests run locally with `make` and in three GitHub Actions workflows. They need only OPA and Regal, which `make tools` installs at pinned versions into `.bin/` after checking their SHA-256 checksums against `scripts/tools.sha256`.
+Six layers of tests run locally with `make` and in three GitHub Actions workflows. They need only OPA and Regal, which `make tools` installs at pinned versions into `.bin/` after checking their SHA-256 checksums against `scripts/tools.sha256`.
 
 | Layer | Command | Workflow | What it proves |
 |---|---|---|---|
 | Static | `make fmt-check check lint` | `ci` | Rego is formatted, compiles under `opa check --strict`, and passes Regal |
 | Unit | `make test`, `make coverage` | `ci` | Each rule does what its tests say; coverage is at least 90% |
 | Contract | `make fixtures` | `ci` | Fixtures are valid inputs, decisions are valid outputs, outcomes match file names, examples match exactly |
+| Replay | `make replay` | `ci` | Recorded tool calls still get the outcome they got when they were recorded |
 | QA | `make qa` | `qa` | The design principles hold across the repository |
 | End to end | `make e2e`, `make e2e-docker` | `e2e` | A real OPA server, loaded the way a deployment loads it, answers correctly over HTTP |
 
@@ -30,6 +31,52 @@ Tests sit next to the code they test, as `*_test.rego` in packages ending in `_t
 2. Evaluates `data.mcp.main.decision` with every pack's `data.example.json` loaded.
 3. Validates the decision against `schemas/decision.schema.json`.
 4. Checks the outcome. Fixtures are named `allow_*`, `approve_*` or `deny_<code>[--<description>]`. Examples must match their `decision.json` exactly.
+
+## Replaying real traces
+
+Fixtures are written by hand. A trace is what your agents really sent. `scripts/replay.sh` takes an OPA decision log, evaluates every recorded tool call again with the policies in this checkout, and compares each outcome with the one that was recorded. Use it before you upgrade the library or change your config, to see which real calls would be decided differently.
+
+```sh
+make replay TRACE=/var/log/opa/decisions.log CONFIG=/etc/mcp/config.json
+```
+
+With no arguments, `make replay` checks the sample in `examples/trace/` against every pack's example config, which is what CI runs.
+
+### Recording a trace
+
+Turn on decision logs where OPA runs, for example with `--set decision_logs.console=true`, and keep the output. Each record holds the input and the result, so the log is its own expected output. Two kinds of record are replayed, and anything else is skipped:
+
+| Logged query | What the record holds |
+|---|---|
+| `data.mcp.main.decision` | The library input and the decision |
+| The agentgateway adapter's `response` | The gateway's check. The adapter is run again to build the library input, so the replay covers the adapter too. |
+
+A decision log does not record the config. Pass the config that was live when the trace was recorded, or every call will look as if it moved.
+
+Traces hold tool arguments: SQL, file contents, repository names. Keep them out of the repository unless they are synthetic. A decision-log mask policy that removes arguments also changes what the packs see, so a masked trace cannot be replayed faithfully. The report itself prints only the decision ID, server, tool and deny codes.
+
+### What fails
+
+| Report line | Meaning | Fails |
+|---|---|---|
+| `LOOSENED` | The call was refused or held for approval, and is now more open | yes: a security regression |
+| `TIGHTENED` | The call was allowed, and is now refused or held for approval | yes: a usability regression |
+| `CONTRACT` | A call that was allowed or held has an input that breaks `schemas/input.schema.json`, or a decision breaks the decision schema | yes: the integration has drifted from the contract |
+| `REASONS` | The call is still refused, with different deny codes | no |
+
+A trace with no replayable record fails too, so an empty or misrouted log cannot pass by accident.
+
+Both directions fail on purpose. A security fix should refuse the attack it targets without refusing the calls your agents make every day, and the replay is how you check the second half: the hardening release must leave your recorded allows alone.
+
+Some moves are intended. A fix that refuses a call which should never have run will show as `TIGHTENED`; a corrected false positive will show as `LOOSENED`. Review each one, then list its decision ID in a file, one per line, and pass it:
+
+```sh
+REPLAY_ACCEPT=accepted.txt make replay TRACE=decisions.log CONFIG=config.json
+```
+
+Accepted moves are still printed, marked `accepted`. Any move not in the file still fails.
+
+To test a built bundle, such as a release candidate, set `REPLAY_POLICY=dist/mcp-policy-library.tar.gz`.
 
 ## QA gates
 
@@ -87,7 +134,7 @@ opa eval --data policies/ --data packs/github/data.example.json \
 
 | Workflow | Triggers | Jobs |
 |---|---|---|
-| `.github/workflows/ci.yml` | pull requests, pushes to `main`, `v*` tags | `test`, which uploads the bundle as the `opa-bundle` artifact; `release` on tags, which runs QA, checks the tag against `policy_version` and attaches the bundle to the GitHub release |
+| `.github/workflows/ci.yml` | pull requests, pushes to `main`, `v*` tags | `test`, which includes the replay and uploads the bundle as the `opa-bundle` artifact; `release` on tags, which runs QA, checks the tag against `policy_version` and attaches the bundle to the GitHub release |
 | `.github/workflows/qa.yml` | pull requests, pushes to `main` | `qa` |
 | `.github/workflows/e2e.yml` | pull requests, pushes to `main` | `server`, the HTTP tests; `sidecar`, the Docker Compose test |
 

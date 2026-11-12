@@ -90,7 +90,7 @@ for dir in packs/*/; do
 		*) fail "$pack is not in routable_packs" ;;
 		esac
 	fi
-	opa eval --fail --input "packs/$pack/data.example.json" 'object.keys(input) == {"mcp_config"}' >/dev/null 2>&1 ||
+	opa eval --fail --input "packs/$pack/data.example.json" 'object.keys(input) = {"mcp_config"}' >/dev/null 2>&1 ||
 		fail "packs/$pack/data.example.json must hold only the mcp_config key"
 	opa eval --fail --input "packs/$pack/data.example.json" --stdin 2>/dev/null <<Q >/dev/null || fail "packs/$pack/data.example.json has no mcp_config.$pack config"
 input.mcp_config["$pack"]
@@ -137,7 +137,7 @@ fi
 version="$(opa eval --format=raw --data policies/ 'data.mcp.main.policy_version')"
 for decision in examples/*/decision.json; do
 	[ -f "$decision" ] || continue
-	opa eval --fail --input "$decision" "input.policy_version == \"$version\"" >/dev/null 2>&1 ||
+	opa eval --fail --input "$decision" "input.policy_version = \"$version\"" >/dev/null 2>&1 ||
 		fail "$decision does not carry policy_version $version"
 done
 pass "example decisions carry policy_version $version"

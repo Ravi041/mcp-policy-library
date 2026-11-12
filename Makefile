@@ -11,10 +11,15 @@ REGAL := $(firstword $(wildcard $(BIN)/regal) regal)
 VERSION ?= dev
 COVERAGE_THRESHOLD ?= 90
 
-# Rego that the static checks and tests cover: the library, plus integration adapters that need only OPA.
-REGO_DIRS := policies/ integrations/agentgateway/policy/
+# Rego that the static checks and tests cover: the library, integration adapters that need only OPA,
+# and the trace replay tooling.
+REGO_DIRS := policies/ integrations/agentgateway/policy/ scripts/replay/
 
-.PHONY: tools fmt fmt-check check lint test coverage fixtures qa bundle config-bundle e2e e2e-docker ci clean
+# The trace that `make replay` checks, and the config that was live when it was recorded.
+TRACE ?= examples/trace/decision-log.jsonl
+CONFIG ?= $(wildcard packs/*/data.example.json)
+
+.PHONY: tools fmt fmt-check check lint test coverage fixtures replay qa bundle config-bundle e2e e2e-docker ci clean
 
 tools: ## Install pinned OPA and Regal into .bin/
 	sh scripts/install-tools.sh
@@ -43,6 +48,9 @@ coverage: ## Run unit tests and enforce the coverage threshold
 fixtures: ## Validate fixtures and examples against the schemas and check their outcomes
 	sh scripts/check-fixtures.sh
 
+replay: ## Replay a recorded decision log; fails when any call's outcome moved. TRACE=<log> CONFIG=<data.json ...>
+	sh scripts/replay.sh $(TRACE) $(CONFIG)
+
 qa: ## Repository quality gates: contracts, neutrality, pack completeness, docs
 	sh scripts/qa.sh
 
@@ -59,7 +67,7 @@ e2e: bundle ## End-to-end test against a real OPA server over HTTP
 e2e-docker: bundle config-bundle ## End-to-end test of the docker compose sidecar example (needs Docker)
 	sh scripts/e2e-docker.sh
 
-ci: fmt-check check lint coverage fixtures qa e2e ## Everything CI runs, except the Docker test
+ci: fmt-check check lint coverage fixtures replay qa e2e ## Everything CI runs, except the Docker test
 
 clean:
 	rm -rf dist coverage.json
