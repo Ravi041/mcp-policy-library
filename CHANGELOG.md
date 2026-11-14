@@ -2,7 +2,22 @@
 
 Each release's `policy_version` matches its tag. Every decision carries it, so you can tell which rules made a decision.
 
+## 0.1.4
+
+The first release since 0.1.1. It also ships the changes listed under 0.1.3 and 0.1.2, so read those too when upgrading from 0.1.1.
+
+### Security
+
+- **postgres (medium):** With `denied_schemas` set, `pg_stat_activity` showed the values other sessions wrote to a denied schema. It keeps each connection's last statement with its literals, even after the connection goes idle. On PostgreSQL 17.11 through agentgateway, `SELECT * FROM secrets.api_keys` was refused, but `SELECT query FROM pg_stat_activity` returned `INSERT INTO secrets.api_keys VALUES ('billing', 'sk_live_...')` from another connection. PostgreSQL shows other roles' statements only to superusers and members of `pg_read_all_stats`, so this mattered when the agent shared a role with the application or held one of those. `pg_stat_activity`, the functions `pg_stat_get_activity` and `pg_stat_get_backend_activity` that return the same text, and `pg_stat_statements` are now refused when `denied_schemas` is set, with the new code `postgres.activity_not_allowed`.
+
+### Fixed
+
+- **tests:** The allowed-call check in `make e2e-docker` could not fail, because it was a single comparison under `opa eval --fail`. It now also checks `require_approval` and `deny`, like the other checks.
+- **agentgateway walkthrough:** On a first run, the calls that reached Postgres failed with HTTP 400 while the gateway downloaded the `postgres-mcp` image. `try.sh up` now pulls it first. It also prints a note when it keeps a `data.json` that differs from the default that `check` expects.
+
 ## 0.1.3
+
+Not published as a release. Its changes ship in 0.1.4.
 
 ### Security
 

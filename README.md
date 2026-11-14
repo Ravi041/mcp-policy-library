@@ -17,7 +17,7 @@ agent --tools/call--> gateway / proxy / control plane --input--> OPA --decision-
 
 ## Status
 
-Early release (v0.1). **Use v0.1.1 or later:** v0.1.0 has bypasses, listed in [GHSA-2g75-x7cr-hv92](https://github.com/Ravi041/mcp-policy-library/security/advisories/GHSA-2g75-x7cr-hv92). The packs are unit-tested, checked against attempts to get around them, and verified end to end behind [agentgateway](docs/try-it-with-gateways.md) with real MCP servers. Before you rely on it in production, know that:
+Early release (v0.1). **Use v0.1.4 or later:** earlier versions have bypasses, listed in the [changelog](CHANGELOG.md) and, for v0.1.0, in [GHSA-2g75-x7cr-hv92](https://github.com/Ravi041/mcp-policy-library/security/advisories/GHSA-2g75-x7cr-hv92). The packs are unit-tested, checked against attempts to get around them, and verified end to end behind [agentgateway](docs/try-it-with-gateways.md) with real MCP servers. Before you rely on it in production, know that:
 
 - **It is one layer, not the only one.** Keep least-privilege credentials underneath: a read-only database role, a scoped GitHub token, and the filesystem server's own allowed directories. The Postgres pack in particular inspects SQL as text and [cannot catch everything](packs/postgres/README.md#read-this-first-sql-inspection-here-is-best-effort).
 - **Only agentgateway has been tested live.** Other gateways need an adapter like the one in [`integrations/agentgateway/`](integrations/agentgateway/).
@@ -76,7 +76,7 @@ opa eval --format=pretty \
       "pack:github"
     ]
   },
-  "policy_version": "0.1.3",
+  "policy_version": "0.1.4",
   "require_approval": false
 }
 ```
@@ -98,7 +98,7 @@ curl -s -H 'Content-Type: application/json' \
 ```
 
 ```json
-{"result":{"allow":true,"deny":[],"obligations":{"audit_tags":["github:write","pack:github"]},"policy_version":"0.1.3","require_approval":false}}
+{"result":{"allow":true,"deny":[],"obligations":{"audit_tags":["github:write","pack:github"]},"policy_version":"0.1.4","require_approval":false}}
 ```
 
 ## How it works
@@ -199,7 +199,7 @@ Two rules apply to every integration:
 Each tagged release attaches `mcp-policy-library.tar.gz`, an OPA bundle with root `mcp`, to its GitHub release. Load it alongside your own config bundle. From v0.1.1, each bundle has a signed build provenance attestation. Check that it was built by this repository's release workflow before you load it:
 
 ```sh
-gh release download v0.1.1 --repo Ravi041/mcp-policy-library -p mcp-policy-library.tar.gz
+gh release download v0.1.4 --repo Ravi041/mcp-policy-library -p mcp-policy-library.tar.gz
 gh attestation verify mcp-policy-library.tar.gz --repo Ravi041/mcp-policy-library
 ```
 

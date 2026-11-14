@@ -51,13 +51,13 @@ Use the released bundle:
 
 ```sh
 mkdir -p dist
-gh release download v0.1.1 --repo Ravi041/mcp-policy-library -p mcp-policy-library.tar.gz -D dist
+gh release download v0.1.4 --repo Ravi041/mcp-policy-library -p mcp-policy-library.tar.gz -D dist
 shasum -a 256 dist/mcp-policy-library.tar.gz
 # cdfae94f8fd792e8a32af2afa0b4999ca554e6a1b5d551dcc9d0326b774ba563
 gh attestation verify dist/mcp-policy-library.tar.gz --repo Ravi041/mcp-policy-library
 ```
 
-Do not use v0.1.0. It has authorization bypasses that 0.1.1 fixes; see the [changelog](../CHANGELOG.md).
+Do not use a release before v0.1.4. Each has authorization bypasses that a later version fixes; see the [changelog](../CHANGELOG.md).
 
 Or build one from your checkout with `make bundle`. Either way it lands at `dist/mcp-policy-library.tar.gz`, where the walkthrough looks for it. Set `BUNDLE=/path/to/bundle.tar.gz` to use another file.
 
@@ -114,6 +114,7 @@ postgres pack
   PASS  read a table named in a string                             refused:adapter.denied,postgres.blocked_function
   PASS  run SQL through dblink                                     refused:adapter.denied,postgres.blocked_function,postgres.blocked_function
   PASS  schedule SQL with pg_cron                                  refused:adapter.denied,postgres.blocked_function
+  PASS  read other sessions' statements                           refused:adapter.denied,postgres.activity_not_allowed
   PASS  EXPLAIN ANALYZE, which runs the statement                  refused:adapter.denied,postgres.explain_analyze,postgres.write_not_allowed
   PASS  EXPLAIN with a quoted analyze option                       refused:adapter.denied,postgres.explain_analyze
   PASS    ...and every order is still there
@@ -121,10 +122,10 @@ Failure handling
   PASS  OPA is down: the call is refused, not forwarded            http:403
   PASS    ...and nothing was written
 
-34 passed, 0 failed, 0 skipped
+35 passed, 0 failed, 0 skipped
 ```
 
-`try.sh` keeps an existing `$WORK/config/data.json`, so you can edit it. If you ran an older version, delete that file first, or the `hr-data` check fails against the old configuration.
+`try.sh` keeps an existing `$WORK/config/data.json`, so you can edit it. When it differs from the default, `up` prints a note, because `check` expects the default. If you ran an older version, delete that file first, or the `hr-data` check fails against the old configuration.
 
 The script exits non-zero if any check fails.
 
@@ -173,7 +174,7 @@ The agent receives:
         "allow": false,
         "deny": [{"code": "github.protected_branch", "message": "branch \"main\" is protected; open a pull request instead", "pack": "github"}],
         "obligations": {"audit_tags": ["github:write", "pack:github"]},
-        "policy_version": "0.1.1",
+        "policy_version": "0.1.4",
         "require_approval": false
       }
     }

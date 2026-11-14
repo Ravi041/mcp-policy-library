@@ -2,7 +2,7 @@
 
 Run the policy library inside [agentgateway](https://agentgateway.dev), an open-source MCP gateway. agentgateway asks OPA before it forwards each MCP request, and a small adapter policy turns that request into the library's input.
 
-Verified against agentgateway v1.7.0, OPA-Envoy v1.22.0 and mcp-policy-library v0.1.1. For a step-by-step walkthrough with real MCP servers, see [docs/try-it-with-gateways.md](../../docs/try-it-with-gateways.md).
+Verified against agentgateway v1.7.0, OPA-Envoy v1.22.0 and mcp-policy-library v0.1.4. For a step-by-step walkthrough with real MCP servers, see [docs/try-it-with-gateways.md](../../docs/try-it-with-gateways.md).
 
 ```
 MCP client --Bearer JWT--> agentgateway --ext_authz gRPC--> OPA-Envoy                      --> MCP server
@@ -16,7 +16,7 @@ MCP client --Bearer JWT--> agentgateway --ext_authz gRPC--> OPA-Envoy           
 |---|---|
 | [`policy/mcp_adapters/agentgateway/adapter.rego`](policy/mcp_adapters/agentgateway/adapter.rego) | The adapter. It builds the library input, asks `data.mcp.main.decision` and answers in the OPA-Envoy format. Tested by `make test`. |
 | [`agentgateway.template.yaml`](agentgateway.template.yaml) | Gateway configuration: one route per MCP server, each with `jwtAuth` and `extAuthz` |
-| [`try.sh`](try.sh) | Starts OPA, the gateway, MCP servers and Postgres, runs 34 checks, and stops everything |
+| [`try.sh`](try.sh) | Starts OPA, the gateway, MCP servers and Postgres, runs 35 checks, and stops everything |
 | [`mcp-client.sh`](mcp-client.sh) | A minimal MCP client over Streamable HTTP, using curl |
 | [`dev-token.sh`](dev-token.sh) | Creates a local signing key, a JWKS and short-lived tokens. For local testing only. |
 | [`install.sh`](install.sh), [`tools.sha256`](tools.sha256) | Installs pinned agentgateway, OPA-Envoy and GitHub MCP server binaries into `.bin/`, checking each checksum |

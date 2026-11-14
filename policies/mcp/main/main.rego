@@ -6,7 +6,7 @@ package mcp.main
 import data.mcp.lib
 import data.mcp.packs.baseline
 
-policy_version := "0.1.3"
+policy_version := "0.1.4"
 
 # Packs a server may route to. Baseline runs on every call and is never a route.
 routable_packs := {"filesystem", "github", "postgres"}
