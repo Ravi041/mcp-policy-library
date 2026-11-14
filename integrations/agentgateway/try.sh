@@ -109,9 +109,10 @@ up() {
 	echo 'not a real secret' >"$WORK/workspace/secrets/keys.txt"
 
 	# Configuration bundle: who may do what. Paths are absolute, as the filesystem pack requires.
-	# An existing data.json is kept, so you can edit it and run `up` again.
+	# An existing data.json is kept, so you can edit it and run `up` again. The default is
+	# written outside config/, because OPA would merge any JSON file it finds there.
 	echo '{"roots":["mcp_config"]}' >"$WORK/config/.manifest"
-	[ -f "$WORK/config/data.json" ] || cat >"$WORK/config/data.json" <<EOF
+	cat >"$WORK/default-config.json" <<EOF
 {
   "mcp_config": {
     "baseline": {
@@ -135,6 +136,12 @@ up() {
   }
 }
 EOF
+	if [ ! -f "$WORK/config/data.json" ]; then
+		cp "$WORK/default-config.json" "$WORK/config/data.json"
+	elif ! cmp -s "$WORK/default-config.json" "$WORK/config/data.json"; then
+		echo "note: keeping your edited $WORK/config/data.json; \`check\` expects the default and may fail." >&2
+		echo "      Delete it to go back to the default." >&2
+	fi
 
 	sed -e "s|@WORK@|$WORK|g" -e "s|@BIN@|$bin|g" \
 		-e "s|@GATEWAY_PORT@|$GATEWAY_PORT|g" -e "s|@AUTHZ_PORT@|$AUTHZ_PORT|g" \
@@ -159,6 +166,9 @@ EOF
 			-e POSTGRES_USER=demo -e POSTGRES_PASSWORD=demo -e POSTGRES_DB=demo \
 			-v "$WORK/pg-init:/docker-entrypoint-initdb.d:ro" "$POSTGRES_IMAGE" >/dev/null
 		wait_for "Postgres" docker exec "$PG_CONTAINER" psql -U demo -d demo -tAc 'SELECT count(*) FROM public.orders'
+		# The gateway starts the server with `docker run` on the first session. Pull it now, or a
+		# first run spends the opening checks downloading it and the calls that reach it fail.
+		docker pull --quiet "$POSTGRES_MCP_IMAGE" >/dev/null
 	fi
 
 	: >"$WORK/opa.log"
@@ -360,6 +370,8 @@ check() {
 			"{\"name\":\"execute_sql\",\"arguments\":{\"sql\":\"SELECT dblink_connect_u('c', 'dbname=demo'), dblink_send_query('c', 'DELETE FROM public.orders')\"}}"
 		expect "schedule SQL with pg_cron" refused:postgres.blocked_function postgres tools/call \
 			"{\"name\":\"execute_sql\",\"arguments\":{\"sql\":\"SELECT cron.schedule('* * * * *', 'DELETE FROM public.orders')\"}}"
+		expect "read other sessions' statements" refused:postgres.activity_not_allowed postgres tools/call \
+			'{"name":"execute_sql","arguments":{"sql":"SELECT query FROM pg_stat_activity"}}'
 		expect "EXPLAIN ANALYZE, which runs the statement" refused:postgres.explain_analyze postgres tools/call \
 			'{"name":"execute_sql","arguments":{"sql":"EXPLAIN ANALYZE DELETE FROM public.orders"}}'
 		expect "EXPLAIN with a quoted analyze option" refused:postgres.explain_analyze postgres tools/call \

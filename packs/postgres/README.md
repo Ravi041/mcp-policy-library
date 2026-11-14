@@ -60,6 +60,7 @@ Any other tool is denied. That includes `analyze_query_indexes`, because it take
 | `postgres.invalid_config` | a key in `data.mcp_config.postgres` has the wrong type, such as a string where a list belongs, or that config is not an object. Every call to this pack is refused until it is fixed, because a malformed deny list would otherwise switch its check off. |
 | `postgres.sensitive_catalog` | the SQL names `pg_authid`, `pg_shadow`, `pg_user_mapping`, `pg_user_mappings`, `pg_subscription` or `pg_largeobject`, or the `pg_toast` schema. These hold password hashes, connection passwords, large-object data and the stored values of other tables. A column or alias with one of these names is refused too. Use `pg_roles`, `pg_user` or `pg_stat_subscription` for the same facts without the secrets. |
 | `postgres.statistics_not_allowed` | `denied_schemas` is set and the SQL reads a planner statistics view or table: `pg_stats`, `pg_stats_ext`, `pg_stats_ext_exprs`, `pg_statistic` or `pg_statistic_ext_data`. These hold sample values from every table the role can read. |
+| `postgres.activity_not_allowed` | `denied_schemas` is set and the SQL names `pg_stat_activity`, `pg_stat_get_activity`, `pg_stat_get_backend_activity` or `pg_stat_statements`. These show other sessions' statement text, which holds the values they wrote, including to a denied schema. An idle connection keeps its last statement there. A column or alias with one of these names is refused too. |
 
 ## Blocked functions
 

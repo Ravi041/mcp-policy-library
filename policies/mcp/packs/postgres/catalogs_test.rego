@@ -1,5 +1,7 @@
 package mcp.packs.postgres_test
 
+import data.mcp.packs.postgres
+
 # Catalogs with password hashes or connection passwords, and the storage behind other tables.
 sensitive_catalog_queries := {
 	"SELECT rolname, rolpassword FROM pg_authid",
@@ -35,4 +37,36 @@ test_catalogs_without_secrets_still_allowed if {
 	] {
 		allowed(sql_call(sql))
 	}
+}
+
+# Other sessions' statement text holds the literals they sent, including values written to
+# a denied schema. On PostgreSQL 17.11, pg_stat_activity returned an idle connection's last
+# statement, INSERT INTO secrets.api_keys VALUES (..., 'sk_live_...'), through agentgateway.
+activity_queries := {
+	"SELECT query FROM pg_stat_activity",
+	"SELECT query FROM pg_catalog.pg_stat_activity WHERE state = 'idle'",
+	`SELECT query FROM "pg_stat_activity"`,
+	"SELECT * FROM PG_STAT_ACTIVITY",
+	"SELECT * FROM pg_stat_get_activity(NULL)",
+	"SELECT pg_stat_get_backend_activity(b) FROM pg_stat_get_backend_idset() AS b",
+	"SELECT query FROM pg_stat_statements",
+	"SELECT * FROM pg_stat_statements(true)",
+}
+
+test_activity_views_denied_with_denied_schemas if {
+	every sql in activity_queries {
+		not allowed_with(sql_call(sql), schema_cfg)
+		"postgres.activity_not_allowed" in codes(postgres.deny) with input as sql_call(sql)
+			with data.mcp_config.postgres as schema_cfg
+	}
+}
+
+test_activity_views_allowed_without_denied_schemas if {
+	every sql in activity_queries {
+		allowed_with(sql_call(sql), {})
+	}
+}
+
+test_activity_names_in_strings_are_still_text if {
+	allowed_with(sql_call("SELECT 'pg_stat_activity' AS name"), schema_cfg)
 }

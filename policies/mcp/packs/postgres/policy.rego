@@ -196,6 +196,15 @@ referenced_schemas contains lower(schema) if {
 # Planner statistics hold sample values from every table the role can read.
 statistics_relations := {"pg_stats", "pg_stats_ext", "pg_stats_ext_exprs", "pg_statistic", "pg_statistic_ext_data"}
 
+# Other sessions' statement text, with the literals they sent: a value written to a denied schema
+# shows up here. Includes the functions behind pg_stat_activity, which return the same text.
+activity_relations := {
+	"pg_stat_activity",
+	"pg_stat_get_activity",
+	"pg_stat_get_backend_activity",
+	"pg_stat_statements",
+}
+
 referenced_identifiers contains lower(name) if {
 	sql_is_readable
 	some name in regex.find_n(identifier_pattern, code_with_identifiers, -1)
@@ -386,6 +395,15 @@ deny contains lib.deny_reason(
 ) if {
 	count(denied_schemas) > 0
 	some name in (referenced_identifiers & statistics_relations)
+}
+
+deny contains lib.deny_reason(
+	pack_name,
+	"activity_not_allowed",
+	sprintf("%q shows other sessions' statements, with the values they wrote to denied schemas", [name]),
+) if {
+	count(denied_schemas) > 0
+	some name in (referenced_identifiers & activity_relations)
 }
 
 deny contains lib.deny_reason(

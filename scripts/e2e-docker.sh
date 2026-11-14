@@ -54,7 +54,8 @@ check() {
 	fi
 }
 
-check examples/github-pull-request-allowed/input.json 'input.result.allow == true'
+# A query of one comparison passes --fail even when it is false, so each check has several.
+check examples/github-pull-request-allowed/input.json 'input.result.allow == true; input.result.require_approval == false; count(input.result.deny) == 0'
 check examples/github-push-to-main-denied/input.json 'input.result.allow == false; input.result.deny[0].code == "github.protected_branch"'
 
 [ "$failures" -eq 0 ]
